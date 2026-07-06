@@ -292,7 +292,7 @@
 
     .group-buttons{
       display:grid;
-      grid-template-columns:repeat(5, minmax(0,1fr));
+      grid-template-columns:repeat(4, minmax(0,1fr));
       gap:8px;
       margin-top:10px;
     }
@@ -405,6 +405,29 @@
       margin:0 0 4px;
       font-size:12px;
     }
+    .shared-options{
+      border:1px solid #dbeafe;
+      background:#eff6ff;
+      border-radius:14px;
+      padding:12px;
+      margin-top:12px;
+    }
+    .checkbox-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0,1fr));
+      gap:8px 12px;
+      margin-top:8px;
+    }
+    .checkbox-grid label{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin:0;
+      font-size:13px;
+      color:#334155;
+    }
+    .checkbox-grid input{width:auto}
+    @media (max-width:760px){.checkbox-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
     .preset-actions{
       display:grid;
       grid-template-columns:repeat(2, minmax(0,1fr));
@@ -721,7 +744,6 @@
                   <option value="NaOCl">NaOCl</option>
                   <option value="UV">UV</option>
                   <option value="pH">pH</option>
-                  <option value="Share">Share</option>
                 </select>
               </div>
             </div>
@@ -730,7 +752,6 @@
               <button type="button" class="group-btn" data-group="NaOCl" onclick="selectPlotGroup('NaOCl')">NaOCl</button>
               <button type="button" class="group-btn" data-group="UV" onclick="selectPlotGroup('UV')">UV</button>
               <button type="button" class="group-btn" data-group="pH" onclick="selectPlotGroup('pH')">pH</button>
-              <button type="button" class="group-btn" data-group="Share" onclick="selectPlotGroup('Share')">Share</button>
             </div>
             <div class="row">
               <div>
@@ -1017,15 +1038,24 @@
               <input id="markerSize" type="number" min="2" max="30" step="0.5" value="6.5" onchange="saveState()" />
             </div>
           </div>
-          <div class="calibration-box" style="margin-top:12px">
-            <h3>各大組別圖例名稱</h3>
-            <div class="share-legend-grid">
-              <div><label>MET 圖例</label><input id="legendNameMET" placeholder="留空用預設圖例名稱" onchange="saveState()" /></div>
-              <div><label>NaOCl 圖例</label><input id="legendNameNaOCl" placeholder="留空用預設圖例名稱" onchange="saveState()" /></div>
-              <div><label>UV 圖例</label><input id="legendNameUV" placeholder="留空用預設圖例名稱" onchange="saveState()" /></div>
-              <div><label>pH 圖例</label><input id="legendNamepH" placeholder="留空用預設圖例名稱" onchange="saveState()" /></div>
-              <div><label>Share 圖例</label><input id="legendNameShare" placeholder="留空用預設圖例名稱" onchange="saveState()" /></div>
+          <div class="shared-options">
+            <label>
+              <input id="shareEnabled" type="checkbox" style="width:auto;margin-right:6px" onchange="handleShareEnabledChange();" />
+              此曲線共用於多個大組別
+            </label>
+            <div class="checkbox-grid">
+              <label><input id="shareGroupMET" type="checkbox" onchange="saveState(); drawAll();" />MET</label>
+              <label><input id="shareGroupNaOCl" type="checkbox" onchange="saveState(); drawAll();" />NaOCl</label>
+              <label><input id="shareGroupUV" type="checkbox" onchange="saveState(); drawAll();" />UV</label>
+              <label><input id="shareGrouppH" type="checkbox" onchange="saveState(); drawAll();" />pH</label>
             </div>
+            <div class="share-legend-grid">
+              <div><label>MET 圖例</label><input id="legendNameMET" placeholder="共用於 MET 時使用" onchange="saveState()" /></div>
+              <div><label>NaOCl 圖例</label><input id="legendNameNaOCl" placeholder="共用於 NaOCl 時使用" onchange="saveState()" /></div>
+              <div><label>UV 圖例</label><input id="legendNameUV" placeholder="共用於 UV 時使用" onchange="saveState()" /></div>
+              <div><label>pH 圖例</label><input id="legendNamepH" placeholder="共用於 pH 時使用" onchange="saveState()" /></div>
+            </div>
+            <div class="small-note">未勾選時，曲線只屬於上方「大組別」，並使用固定的預設圖例名稱。</div>
           </div>
           <div class="actions">
             <button onclick="addSampleRow()">新增時間點</button>
@@ -1059,9 +1089,9 @@
               <tr>
                 <th>顯示</th>
                 <th>名稱</th>
-                <th>大組別</th>
+                <th>大組別 / 共用</th>
                 <th>預設圖例</th>
-                <th>分組圖例</th>
+                <th>共用圖例</th>
                 <th>參數</th>
                 <th>顏色</th>
                 <th>圖示</th>
@@ -1128,11 +1158,12 @@ function newProject(name='新專案'){
       seriesName: '',
       seriesGroup: '',
       legendName: '',
+      shareEnabled: false,
+      shareGroups: [],
       legendNameMET: '',
       legendNameNaOCl: '',
       legendNameUV: '',
       legendNamepH: '',
-      legendNameShare: '',
       markerSize: 6.5,
       editingSeriesId: '',
       rows: [{time:0, area:'', note:''}]
@@ -1339,17 +1370,31 @@ function ensureProjectShape(p){
   p.chart.defaultSeriesGroup ??= '';
   p.input.seriesGroup ??= '';
   p.input.legendName ??= '';
+  p.input.shareEnabled ??= false;
+  p.input.shareGroups ??= [];
   p.input.legendNameMET ??= '';
   p.input.legendNameNaOCl ??= '';
   p.input.legendNameUV ??= '';
   p.input.legendNamepH ??= '';
-  p.input.legendNameShare ??= '';
   p.input.markerSize ??= 6.5;
   p.input.editingSeriesId ??= '';
   p.series.forEach(s => {
     s.group = canonicalGroupName(s.group || '');
+    if(s.group === 'Share'){
+      s.shareEnabled = true;
+      s.shareGroups = ['MET','NaOCl','UV','pH'];
+      s.group = '';
+    }
+    s.shareEnabled ??= false;
+    s.shareGroups = normalizeShareGroups(s.shareGroups || []);
     s.legendName ??= s.name || '';
+    s.legendNames ||= {};
+    s.legendNames.MET ??= '';
+    s.legendNames.NaOCl ??= '';
+    s.legendNames.UV ??= '';
+    s.legendNames.pH ??= '';
     s.markerSize ??= 6.5;
+    if(s.rows) s.rows.sort((a,b)=>(Number(a.time)||0)-(Number(b.time)||0));
   });
   p.chart.width ??= 1100;
   p.chart.height ??= 720;
@@ -1413,11 +1458,12 @@ function saveState(){
   p.input.seriesName = val('seriesName');
   p.input.seriesGroup = canonicalGroupName(val('seriesGroup'));
   p.input.legendName = val('legendName');
+  p.input.shareEnabled = document.getElementById('shareEnabled').checked;
+  p.input.shareGroups = readShareGroupChecks();
   p.input.legendNameMET = val('legendNameMET');
   p.input.legendNameNaOCl = val('legendNameNaOCl');
   p.input.legendNameUV = val('legendNameUV');
   p.input.legendNamepH = val('legendNamepH');
-  p.input.legendNameShare = val('legendNameShare');
   p.input.markerSize = Number(val('markerSize')) || 6.5;
   p.input.rows = readSampleInputTable();
 
@@ -1487,7 +1533,7 @@ function canonicalGroupName(group){
 }
 
 function fixedGroups(){
-  return ['MET','NaOCl','UV','pH','Share'];
+  return ['MET','NaOCl','UV','pH'];
 }
 
 function renderPlotGroupSelect(){
@@ -1504,8 +1550,11 @@ function renderPlotGroupSelect(){
     if(fixedGroups().includes(cg)){
       s.group = cg;
       counts[cg] += 1;
-    }else if(cg){
+    }else if(cg && cg !== 'Share'){
       others.add(cg);
+    }
+    if(s.shareEnabled){
+      normalizeShareGroups(s.shareGroups || []).forEach(g => counts[g] = (counts[g] || 0) + 1);
     }
   });
 
@@ -1566,6 +1615,56 @@ function handleDefaultGroupSelect(){
   saveState();
 }
 
+
+function normalizeShareGroups(groups){
+  const allowed = ['MET','NaOCl','UV','pH'];
+  return [...new Set((groups || []).map(canonicalGroupName).filter(g => allowed.includes(g)))];
+}
+
+function readShareGroupChecks(){
+  const ids = [
+    ['MET','shareGroupMET'],
+    ['NaOCl','shareGroupNaOCl'],
+    ['UV','shareGroupUV'],
+    ['pH','shareGrouppH']
+  ];
+  return ids.filter(([g,id]) => document.getElementById(id)?.checked).map(([g]) => g);
+}
+
+function setShareGroupChecks(groups){
+  const set = new Set(normalizeShareGroups(groups));
+  [['MET','shareGroupMET'],['NaOCl','shareGroupNaOCl'],['UV','shareGroupUV'],['pH','shareGrouppH']].forEach(([g,id]) => {
+    const el = document.getElementById(id);
+    if(el) el.checked = set.has(g);
+  });
+}
+
+function updateShareControlsEnabled(){
+  const enabled = !!document.getElementById('shareEnabled')?.checked;
+  ['shareGroupMET','shareGroupNaOCl','shareGroupUV','shareGrouppH','legendNameMET','legendNameNaOCl','legendNameUV','legendNamepH'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.disabled = !enabled;
+  });
+}
+
+function handleShareEnabledChange(){
+  const enabled = document.getElementById('shareEnabled').checked;
+  if(enabled && readShareGroupChecks().length === 0){
+    const g = canonicalGroupName(val('seriesGroup') || activeProject().chart.defaultSeriesGroup || 'MET');
+    setShareGroupChecks(['MET','NaOCl','UV','pH'].includes(g) ? [g] : ['MET']);
+  }
+  updateShareControlsEnabled();
+  saveState();
+  drawAll();
+}
+
+function seriesInPlotGroup(s, selectedGroup){
+  if(selectedGroup === '__all__') return true;
+  const g = canonicalGroupName(s.group || '');
+  if(g === selectedGroup) return true;
+  return !!s.shareEnabled && normalizeShareGroups(s.shareGroups || []).includes(selectedGroup);
+}
+
 function renderAll(){
   const p = activeProject();
   renderProjectSelect();
@@ -1588,11 +1687,13 @@ function renderAll(){
   setVal('seriesName', p.input.seriesName);
   setVal('seriesGroup', canonicalGroupName(p.input.seriesGroup || p.chart.defaultSeriesGroup || ''));
   setVal('legendName', p.input.legendName || '');
+  document.getElementById('shareEnabled').checked = !!p.input.shareEnabled;
+  setShareGroupChecks(p.input.shareGroups || []);
   setVal('legendNameMET', p.input.legendNameMET || '');
   setVal('legendNameNaOCl', p.input.legendNameNaOCl || '');
   setVal('legendNameUV', p.input.legendNameUV || '');
   setVal('legendNamepH', p.input.legendNamepH || '');
-  setVal('legendNameShare', p.input.legendNameShare || '');
+  updateShareControlsEnabled();
   setVal('markerSize', p.input.markerSize || 6.5);
   renderSampleInputTable();
   renderSeriesTable();
@@ -1682,8 +1783,8 @@ function renderCalTable(){
   p.calibration.points.forEach((row, i) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input data-nav="1" type="number" step="any" value="${safe(row.conc)}" oninput="saveState(); drawAll();"></td>
-      <td><input data-nav="1" type="number" step="any" value="${safe(row.area)}" oninput="saveState(); drawAll();"></td>
+      <td><input data-nav="1" type="number" step="any" value="${safe(row.conc)}" oninput="saveState(); drawAll();" onchange="sortCalibrationRowsAndRender();"></td>
+      <td><input data-nav="1" type="number" step="any" value="${safe(row.area)}" oninput="saveState(); drawAll();" onchange="sortCalibrationRowsAndRender();"></td>
       <td><button class="mini danger" onclick="removeCalRow(${i})">刪除</button></td>`;
     tb.appendChild(tr);
   });
@@ -1693,7 +1794,17 @@ function readCalTable(){
   return [...document.querySelectorAll('#calTable tbody tr')].map(tr => {
     const inputs = tr.querySelectorAll('input');
     return {conc: Number(inputs[0].value), area: Number(inputs[1].value)};
-  }).filter(r => Number.isFinite(r.conc) && Number.isFinite(r.area));
+  }).filter(r => Number.isFinite(r.conc) && Number.isFinite(r.area))
+    .sort((a,b)=>a.conc-b.conc);
+}
+
+
+function sortCalibrationRowsAndRender(){
+  const p = activeProject();
+  p.calibration.points = readCalTable();
+  renderCalTable();
+  saveState();
+  drawAll();
 }
 
 function addCalRow(){
@@ -1778,8 +1889,8 @@ function renderSampleInputTable(){
     const conc = areaToConc(row.area);
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input data-nav="1" type="number" step="any" value="${safe(row.time)}" oninput="refreshSampleConcentrations(); saveState();"></td>
-      <td><input data-nav="1" type="number" step="any" value="${safe(row.area)}" oninput="refreshSampleConcentrations(); saveState();"></td>
+      <td><input data-nav="1" type="number" step="any" value="${safe(row.time)}" oninput="refreshSampleConcentrations(); saveState();" onchange="sortSampleRowsAndRender();"></td>
+      <td><input data-nav="1" type="number" step="any" value="${safe(row.area)}" oninput="refreshSampleConcentrations(); saveState();" onchange="sortSampleRowsAndRender();"></td>
       <td class="mono conc-cell">${Number.isFinite(conc) ? fmt(conc,4) : '—'}</td>
       <td><input data-nav="1" value="${escapeAttr(row.note || '')}" oninput="saveState();"></td>
       <td><button class="mini danger" onclick="removeSampleRow(${i})">刪除</button></td>`;
@@ -1795,7 +1906,12 @@ function readSampleInputTable(){
       area: inputs[1].value === '' ? '' : Number(inputs[1].value),
       note: inputs[2].value || ''
     };
-  }).filter(r => Number.isFinite(r.time) || r.area !== '' || r.note);
+  }).filter(r => Number.isFinite(r.time) || r.area !== '' || r.note)
+    .sort((a,b)=>{
+      const at = Number.isFinite(a.time) ? a.time : Number.POSITIVE_INFINITY;
+      const bt = Number.isFinite(b.time) ? b.time : Number.POSITIVE_INFINITY;
+      return at-bt;
+    });
 }
 
 function refreshSampleConcentrations(){
@@ -1804,6 +1920,14 @@ function refreshSampleConcentrations(){
     const c = areaToConc(inputs[1].value);
     tr.querySelector('.conc-cell').textContent = Number.isFinite(c) ? fmt(c,4) : '—';
   });
+}
+
+
+function sortSampleRowsAndRender(){
+  const p = activeProject();
+  p.input.rows = readSampleInputTable();
+  renderSampleInputTable();
+  saveState();
 }
 
 function addSampleRow(){
@@ -1894,12 +2018,13 @@ function addSeriesFromCurrentForm(mode='add'){
     markerSize: Number(p.input.markerSize) || (oldSeries ? oldSeries.markerSize : 6.5),
     group: canonicalGroupName(p.input.seriesGroup || p.chart.defaultSeriesGroup || ''),
     legendName: p.input.legendName || name,
+    shareEnabled: !!p.input.shareEnabled,
+    shareGroups: normalizeShareGroups(p.input.shareGroups || []),
     legendNames: {
       MET: p.input.legendNameMET || '',
       NaOCl: p.input.legendNameNaOCl || '',
       UV: p.input.legendNameUV || '',
-      pH: p.input.legendNamepH || '',
-      Share: p.input.legendNameShare || ''
+      pH: p.input.legendNamepH || ''
     },
     rows
   };
@@ -1939,7 +2064,7 @@ function makeParamText(p){
 function groupOptionsHtml(current){
   const cg = canonicalGroupName(current);
   const base = ['','MET','NaOCl','UV','pH'];
-  const labels = {'':'不指定','MET':'MET','NaOCl':'NaOCl','UV':'UV','pH':'pH','Share':'Share'};
+  const labels = {'':'不指定','MET':'MET','NaOCl':'NaOCl','UV':'UV','pH':'pH'};
   let options = base.map(v => `<option value="${v}" ${cg===v?'selected':''}>${labels[v]}</option>`).join('');
   if(cg && !base.includes(cg)){
     options += `<option value="${escapeAttr(cg)}" selected>其他：${escapeAttr(cg)}</option>`;
@@ -1963,15 +2088,20 @@ function renderSeriesTable(){
         <select data-nav="1" onchange="activeProject().series[${i}].group=canonicalGroupName(this.value); renderPlotGroupSelect(); saveState(); drawAll();">
           ${groupOptionsHtml(s.group || '')}
         </select>
+        <label style="display:flex;align-items:center;gap:6px;margin-top:8px">
+          <input type="checkbox" ${s.shareEnabled ? 'checked' : ''} onchange="toggleSeriesShare(${i}, this.checked);" style="width:auto">共用
+        </label>
+        <div class="checkbox-grid" style="grid-template-columns:1fr 1fr">
+          ${['MET','NaOCl','UV','pH'].map(g => `<label><input type="checkbox" ${normalizeShareGroups(s.shareGroups||[]).includes(g) ? 'checked' : ''} onchange="toggleSeriesShareGroup(${i}, '${g}', this.checked);" ${s.shareEnabled ? '' : 'disabled'}>${g}</label>`).join('')}
+        </div>
       </td>
       <td><input data-nav="1" value="${escapeAttr(s.legendName || s.name || '')}" oninput="activeProject().series[${i}].legendName=this.value; saveState(); drawAll();"></td>
       <td>
         <div class="share-legend-grid">
-          <div><label>MET</label><input data-nav="1" value="${escapeAttr((s.legendNames && s.legendNames.MET) || '')}" oninput="setSeriesGroupLegend(${i}, 'MET', this.value);"></div>
-          <div><label>NaOCl</label><input data-nav="1" value="${escapeAttr((s.legendNames && s.legendNames.NaOCl) || '')}" oninput="setSeriesGroupLegend(${i}, 'NaOCl', this.value);"></div>
-          <div><label>UV</label><input data-nav="1" value="${escapeAttr((s.legendNames && s.legendNames.UV) || '')}" oninput="setSeriesGroupLegend(${i}, 'UV', this.value);"></div>
-          <div><label>pH</label><input data-nav="1" value="${escapeAttr((s.legendNames && s.legendNames.pH) || '')}" oninput="setSeriesGroupLegend(${i}, 'pH', this.value);"></div>
-          <div><label>Share</label><input data-nav="1" value="${escapeAttr((s.legendNames && s.legendNames.Share) || '')}" oninput="setSeriesGroupLegend(${i}, 'Share', this.value);"></div>
+          <div><label>MET</label><input data-nav="1" value="${escapeAttr((s.legendNames && s.legendNames.MET) || '')}" oninput="setSeriesGroupLegend(${i}, 'MET', this.value);" ${s.shareEnabled ? '' : 'disabled'}></div>
+          <div><label>NaOCl</label><input data-nav="1" value="${escapeAttr((s.legendNames && s.legendNames.NaOCl) || '')}" oninput="setSeriesGroupLegend(${i}, 'NaOCl', this.value);" ${s.shareEnabled ? '' : 'disabled'}></div>
+          <div><label>UV</label><input data-nav="1" value="${escapeAttr((s.legendNames && s.legendNames.UV) || '')}" oninput="setSeriesGroupLegend(${i}, 'UV', this.value);" ${s.shareEnabled ? '' : 'disabled'}></div>
+          <div><label>pH</label><input data-nav="1" value="${escapeAttr((s.legendNames && s.legendNames.pH) || '')}" oninput="setSeriesGroupLegend(${i}, 'pH', this.value);" ${s.shareEnabled ? '' : 'disabled'}></div>
         </div>
       </td>
       <td>
@@ -1997,6 +2127,31 @@ function renderSeriesTable(){
   });
 }
 
+
+function toggleSeriesShare(index, checked){
+  const s = activeProject().series[index];
+  if(!s) return;
+  s.shareEnabled = checked;
+  if(checked && normalizeShareGroups(s.shareGroups || []).length === 0){
+    const g = canonicalGroupName(s.group || '');
+    s.shareGroups = ['MET','NaOCl','UV','pH'].includes(g) ? [g] : ['MET'];
+  }
+  renderSeriesTable();
+  saveState();
+  drawAll();
+}
+
+function toggleSeriesShareGroup(index, group, checked){
+  const s = activeProject().series[index];
+  if(!s) return;
+  const set = new Set(normalizeShareGroups(s.shareGroups || []));
+  if(checked) set.add(canonicalGroupName(group));
+  else set.delete(canonicalGroupName(group));
+  s.shareGroups = [...set];
+  saveState();
+  drawAll();
+}
+
 function markerName(m){
   return {
     circle:'圓形', square:'正方形', diamond:'菱形',
@@ -2015,11 +2170,12 @@ function loadSeriesToForm(i){
   p.input.seriesName = s.name;
   p.input.seriesGroup = s.group || '';
   p.input.legendName = s.legendName || s.name || '';
+  p.input.shareEnabled = !!s.shareEnabled;
+  p.input.shareGroups = normalizeShareGroups(s.shareGroups || []);
   p.input.legendNameMET = (s.legendNames && s.legendNames.MET) || '';
   p.input.legendNameNaOCl = (s.legendNames && s.legendNames.NaOCl) || '';
   p.input.legendNameUV = (s.legendNames && s.legendNames.UV) || '';
   p.input.legendNamepH = (s.legendNames && s.legendNames.pH) || '';
-  p.input.legendNameShare = (s.legendNames && s.legendNames.Share) || '';
   p.input.markerSize = s.markerSize || 6.5;
   p.input.editingSeriesId = s.id;
   p.input.rows = s.rows.map(r => ({time:r.time, area:r.area, note:r.note || ''}));
@@ -2125,10 +2281,7 @@ function drawChart(){
   const selectedGroup = val('activePlotGroup') === '__all__' ? '__all__' : canonicalGroupName(val('activePlotGroup') || '__all__');
   const visible = p.series.filter(s => {
     if(s.visible === false) return false;
-    const g = canonicalGroupName(s.group || '');
-    if(selectedGroup === '__all__') return true;
-    if(selectedGroup === 'Share') return g === 'Share';
-    return g === selectedGroup || g === 'Share';
+    return seriesInPlotGroup(s, selectedGroup);
   });
   if(!visible.length){
     emptySvgMessage(svg, W, H, selectedGroup === '__all__' ? '尚未建立曲線：請先到「數據登錄」新增/更新為一組曲線' : '此大組別目前沒有可繪製的曲線');
@@ -2288,7 +2441,7 @@ function drawParamBox(svg, x, y, text, maxWidth, fontSize=13){
 
 function seriesLegendLabel(s, i, group=null){
   const g = group && group !== '__all__' ? canonicalGroupName(group) : null;
-  const groupLabel = g && s.legendNames ? (s.legendNames[g] || '').trim() : '';
+  const groupLabel = (s.shareEnabled && g && s.legendNames && normalizeShareGroups(s.shareGroups || []).includes(g)) ? (s.legendNames[g] || '').trim() : '';
   const label = groupLabel || (s.legendName || '').trim() || (s.name || '').trim() || `Series ${i+1}`;
   return label;
 }
@@ -2537,11 +2690,12 @@ function normalizeImportedProject(p){
   p.input.seriesName ??= '';
   p.input.seriesGroup ??= '';
   p.input.legendName ??= '';
+  p.input.shareEnabled ??= false;
+  p.input.shareGroups ??= [];
   p.input.legendNameMET ??= '';
   p.input.legendNameNaOCl ??= '';
   p.input.legendNameUV ??= '';
   p.input.legendNamepH ??= '';
-  p.input.legendNameShare ??= '';
   p.input.markerSize = Number(p.input.markerSize) || 6.5;
   p.input.editingSeriesId ??= '';
   p.input.rows ||= [];
@@ -2558,7 +2712,7 @@ function normalizeImportedProject(p){
     s.legendNames.NaOCl ??= '';
     s.legendNames.UV ??= '';
     s.legendNames.pH ??= '';
-    s.legendNames.Share ??= '';
+
     s.color ||= defaultColors[i % defaultColors.length];
     s.marker ||= markerOptions[i % markerOptions.length];
     s.markerSize = Number(s.markerSize) || 6.5;
