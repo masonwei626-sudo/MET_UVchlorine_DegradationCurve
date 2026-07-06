@@ -1,0 +1,2945 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MET 降解曲線繪圖工具</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --ink:#1f2937;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --accent:#2563eb;
+      --accent2:#0f766e;
+      --danger:#dc2626;
+      --warning:#f59e0b;
+      --shadow:0 12px 32px rgba(15,23,42,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: "Segoe UI", "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background:linear-gradient(180deg,#f7f9ff 0%,#f5f6fa 45%,#eef2f7 100%);
+      color:var(--ink);
+    }
+    header{
+      padding:32px 24px 22px;
+      max-width:1680px;
+      margin:auto;
+    }
+    h1{margin:0 0 8px;font-size:clamp(24px,4vw,38px);letter-spacing:.02em}
+    .subtitle{color:var(--muted);line-height:1.6}
+    main{
+      max-width:1680px;
+      margin:auto;
+      padding:0 24px 56px;
+      display:grid;
+      grid-template-columns: 420px minmax(0,1fr);
+      gap:28px;
+    }
+    @media (max-width:980px){
+      main{grid-template-columns:1fr}
+    }
+    .card{
+      background:rgba(255,255,255,.92);
+      backdrop-filter: blur(8px);
+      border:1px solid rgba(229,231,235,.9);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:22px;
+      margin-bottom:22px;
+    }
+    .card h2{
+      font-size:18px;
+      margin:0 0 14px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .badge{
+      font-size:12px;
+      color:#fff;
+      background:var(--accent);
+      border-radius:999px;
+      padding:3px 8px;
+      font-weight:600;
+    }
+    label{display:block;font-size:13px;color:#374151;margin:10px 0 6px;font-weight:650}
+    input, select, textarea, button{
+      font:inherit;
+    }
+    input, select, textarea{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 11px;
+      background:#fff;
+      color:var(--ink);
+      outline:none;
+    }
+    input:focus, select:focus, textarea:focus{
+      border-color:#93c5fd;
+      box-shadow:0 0 0 4px rgba(37,99,235,.10);
+    }
+    textarea{min-height:68px;resize:vertical}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:12px;
+    }
+    button{
+      border:0;
+      background:var(--accent);
+      color:white;
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:700;
+      transition:.15s;
+      white-space:nowrap;
+    }
+    button:hover{transform:translateY(-1px);filter:brightness(.97)}
+    button.secondary{background:#e5e7eb;color:#111827}
+    button.green{background:var(--accent2)}
+    button.danger{background:var(--danger)}
+    button.ghost{
+      background:#fff;
+      border:1px solid var(--line);
+      color:#374151;
+    }
+    .mini{font-size:12px;padding:7px 9px;border-radius:10px}
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      overflow:hidden;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+    }
+    th,td{
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+      font-size:13px;
+      text-align:left;
+      vertical-align:middle;
+    }
+    th{
+      background:#f8fafc;
+      color:#334155;
+      font-weight:800;
+      position:sticky;
+      top:0;
+      z-index:1;
+    }
+    tr:last-child td{border-bottom:0}
+    td input, td select{padding:7px 8px;border-radius:9px;font-size:13px}
+    .table-wrap{max-height:430px;overflow:auto;border-radius:14px}
+    .small-note{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.55;
+      margin-top:8px;
+    }
+    .status{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      background:#eff6ff;
+      color:#1e3a8a;
+      font-size:13px;
+      line-height:1.5;
+    }
+    .status.warn{background:#fff7ed;color:#9a3412}
+    .status.good{background:#ecfdf5;color:#065f46}
+    .project-item{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      margin:8px 0;
+      background:#fff;
+    }
+    .project-item strong{font-size:14px}
+    .project-item span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+    .chart-card{
+      min-height:620px;
+    }
+    #chartSvg, #calSvg{
+      width:100%;
+      height:auto;
+      display:block;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:18px;
+    }
+    .toolbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:12px;
+    }
+    .tabs{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .tab{
+      background:#fff;
+      color:#334155;
+      border:1px solid var(--line);
+    }
+    .tab.active{
+      background:#111827;
+      color:#fff;
+      border-color:#111827;
+    }
+    .hide{display:none!important}
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:5px 8px;
+      border-radius:999px;
+      background:#f1f5f9;
+      color:#475569;
+      font-size:12px;
+      margin:2px 4px 2px 0;
+    }
+    .split{
+      display:grid;
+      grid-template-columns:minmax(430px, .9fr) minmax(520px, 1.1fr);
+      gap:28px;
+    }
+    @media (max-width:1050px){
+      .split{grid-template-columns:1fr}
+    }
+    .wide-panel{
+      padding:26px;
+    }
+    .section-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:22px;
+      align-items:start;
+    }
+    @media (max-width:1180px){
+      .section-grid{grid-template-columns:1fr}
+    }
+    .control-group{
+      background:#f8fafc;
+      border:1px solid #e5e7eb;
+      border-radius:16px;
+      padding:14px;
+    }
+    .control-group label:first-child{margin-top:0}
+    .table-title-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin:18px 0 10px;
+    }
+
+    .file-input{
+      border:1px dashed #cbd5e1;
+      background:#f8fafc;
+    }
+    .param-preview{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      padding:10px;
+      margin-top:10px;
+    }
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    .collapsible-header{
+      justify-content:space-between;
+      cursor:pointer;
+      user-select:none;
+    }
+    .collapsible-header > span{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .collapsible-body{
+      display:block;
+    }
+    .collapsible-body.collapsed{
+      display:none;
+    }
+    tr.editing-series-row td{
+      background:#e0f2fe !important;
+    }
+    tr.editing-series-row input,
+    tr.editing-series-row select{
+      background:#f0f9ff;
+      border-color:#7dd3fc;
+    }
+
+    .group-buttons{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0,1fr));
+      gap:8px;
+      margin-top:10px;
+    }
+    .group-btn{
+      background:#fff;
+      color:#334155;
+      border:1px solid #cbd5e1;
+      padding:9px 8px;
+      border-radius:12px;
+      font-weight:800;
+    }
+    .group-btn.active{
+      background:#2563eb;
+      color:#fff;
+      border-color:#2563eb;
+    }
+    .chart-settings-card{
+      max-height:calc(100vh - 32px);
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+    .chart-settings-scroll{
+      overflow-y:auto;
+      padding-right:6px;
+      margin-right:-6px;
+    }
+    .settings-section{
+      border:1px solid #e5e7eb;
+      background:#f8fafc;
+      border-radius:16px;
+      padding:14px;
+      margin:0 0 14px;
+    }
+    .settings-section h3{
+      margin:0 0 10px;
+      font-size:14px;
+      color:#0f172a;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .settings-section h3 span{
+      color:#64748b;
+      font-size:12px;
+      font-weight:600;
+    }
+    .settings-section label:first-of-type{
+      margin-top:0;
+    }
+    .settings-section .row,
+    .settings-section .row3{
+      margin-top:8px;
+    }
+    .series-table-wrap{
+      max-height:520px;
+      overflow:auto;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:#fff;
+    }
+    #seriesTable{
+      min-width:1120px;
+      border:0;
+      border-radius:0;
+    }
+    #seriesTable th,
+    #seriesTable td{
+      padding:12px 14px;
+      vertical-align:top;
+    }
+    #seriesTable th:nth-child(1){width:58px}
+    #seriesTable th:nth-child(2){width:190px}
+    #seriesTable th:nth-child(3){width:120px}
+    #seriesTable th:nth-child(4){width:180px}
+    #seriesTable th:nth-child(5){width:260px}
+    #seriesTable th:nth-child(6){width:90px}
+    #seriesTable th:nth-child(7){width:120px}
+    #seriesTable th:nth-child(8){width:90px}
+    #seriesTable th:nth-child(9){width:150px}
+    #seriesTable .pill{
+      margin-bottom:6px;
+    }
+    .calibration-layout{
+      display:grid;
+      grid-template-columns:minmax(430px,.95fr) minmax(520px,1.05fr);
+      gap:28px;
+      align-items:start;
+    }
+    .calibration-left{display:flex;flex-direction:column;gap:14px}
+    .calibration-box{
+      border:1px solid #e5e7eb;
+      background:#f8fafc;
+      border-radius:16px;
+      padding:14px;
+    }
+    .calibration-box h3{
+      margin:0 0 10px;
+      font-size:14px;
+      color:#0f172a;
+    }
+    .share-legend-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:8px;
+    }
+    .share-legend-grid label{
+      margin:0 0 4px;
+      font-size:12px;
+    }
+    .shared-options{
+      border:1px solid #dbeafe;
+      background:#eff6ff;
+      border-radius:14px;
+      padding:12px;
+      margin-top:12px;
+    }
+    .checkbox-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0,1fr));
+      gap:8px 12px;
+      margin-top:8px;
+    }
+    .checkbox-grid label{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin:0;
+      font-size:13px;
+      color:#334155;
+    }
+    .checkbox-grid input{width:auto}
+    @media (max-width:760px){.checkbox-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    .preset-actions{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:8px;
+      margin-top:10px;
+    }
+    .preset-note{
+      color:#64748b;
+      font-size:12px;
+      line-height:1.5;
+      margin-top:8px;
+    }
+    @media (max-width:520px){.preset-actions{grid-template-columns:1fr}}
+    .button-like{
+      display:inline-block;
+      border:0;
+      background:var(--primary);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:12px;
+      font-weight:700;
+      font-size:14px;
+      box-shadow:0 8px 18px rgba(37,99,235,.14);
+    }
+    .button-like.secondary{
+      background:#e5e7eb;
+      color:#111827;
+    }
+    #seriesTable{min-width:1120px;}
+    @media (max-width:1120px){.calibration-layout{grid-template-columns:1fr}}
+    .series-action-buttons{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+    @media (max-width:520px){
+      .group-buttons{grid-template-columns:repeat(2, minmax(0,1fr));}
+    }
+
+  
+    /* Mobile / tablet responsive layout */
+    html, body{
+      -webkit-text-size-adjust:100%;
+      touch-action:manipulation;
+    }
+    input, select, textarea, button{
+      font-size:16px; /* avoid iOS zoom */
+    }
+    .mobile-jumpbar{
+      display:none;
+      position:sticky;
+      top:0;
+      z-index:20;
+      background:rgba(248,250,252,.96);
+      backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--line);
+      padding:8px 10px;
+      overflow-x:auto;
+      gap:8px;
+    }
+    .mobile-jumpbar button{
+      white-space:nowrap;
+      padding:8px 10px;
+      border-radius:999px;
+      font-size:13px;
+      box-shadow:none;
+    }
+    @media (max-width: 1180px){
+      .wrap{
+        max-width:100%;
+        padding:14px;
+      }
+      .grid{
+        grid-template-columns:1fr;
+      }
+      aside{
+        position:relative;
+        top:auto;
+        height:auto;
+        max-height:none;
+        overflow:visible;
+        order:1;
+      }
+      main{
+        order:2;
+      }
+      .chart-settings-card{
+        max-height:none;
+      }
+      .chart-settings-scroll{
+        max-height:72vh;
+        overflow-y:auto;
+      }
+      .project-body{
+        max-height:42vh;
+        overflow-y:auto;
+      }
+      .mobile-jumpbar{
+        display:flex;
+      }
+      .wide-panel{
+        padding:16px;
+      }
+      .calibration-layout{
+        grid-template-columns:1fr;
+      }
+      svg{
+        max-width:100%;
+        height:auto;
+      }
+    }
+    @media (max-width: 760px){
+      header{
+        padding:14px 12px;
+        border-radius:18px;
+      }
+      h1{
+        font-size:22px;
+      }
+      h2{
+        font-size:17px;
+      }
+      .tabs{
+        gap:6px;
+        overflow-x:auto;
+        padding-bottom:2px;
+      }
+      .tab-btn{
+        flex:0 0 auto;
+        padding:9px 10px;
+        font-size:13px;
+      }
+      .row,
+      .row3,
+      .calibration-layout,
+      .share-legend-grid,
+      .preset-actions,
+      .group-buttons{
+        grid-template-columns:1fr!important;
+      }
+      .actions{
+        gap:8px;
+      }
+      .actions button,
+      .actions label.button-like{
+        flex:1 1 150px;
+      }
+      .card{
+        padding:14px;
+        border-radius:18px;
+      }
+      .settings-section,
+      .calibration-box{
+        padding:12px;
+        border-radius:14px;
+      }
+      .table-wrap,
+      .series-table-wrap{
+        overflow:auto;
+        -webkit-overflow-scrolling:touch;
+      }
+      #sampleTable,
+      #seriesTable,
+      #calTable{
+        min-width:760px;
+      }
+      #chartSvg,
+      #calSvg{
+        width:100%;
+      }
+      .chart-card-actions{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+      }
+      .chart-card-actions button{
+        width:100%;
+      }
+    }
+    @media (max-width: 480px){
+      .wrap{
+        padding:10px;
+      }
+      header{
+        margin-bottom:10px;
+      }
+      .card{
+        padding:12px;
+      }
+      .chart-card-actions{
+        grid-template-columns:1fr;
+      }
+      #seriesTable{
+        min-width:1180px;
+      }
+      #sampleTable{
+        min-width:920px;
+      }
+    }
+
+</style>
+</head>
+<body>
+  <header>
+    <h1>MET 降解曲線繪圖工具</h1>
+
+  </header>
+
+  <nav class="mobile-jumpbar" aria-label="快速跳轉">
+    <button type="button" onclick="scrollToPanel('projectManager')">專案</button>
+    <button type="button" onclick="scrollToPanel('chartSettings')">圖表設定</button>
+    <button type="button" onclick="switchTab('cal'); scrollToPanel('panelCal')">檢量線</button>
+    <button type="button" onclick="switchTab('data'); scrollToPanel('panelData')">數據</button>
+    <button type="button" onclick="switchTab('plot'); scrollToPanel('panelPlot')">繪圖</button>
+  </nav>
+
+
+  <main>
+    <aside>
+      <section class="card collapsible-card">
+        <h2 class="collapsible-header" onclick="toggleSection('projectBody')">
+          <span>專案管理 <span class="badge">Project</span></span>
+          <button type="button" class="mini ghost" id="projectBodyToggle">收摺</button>
+        </h2>
+        <div id="projectBody" class="collapsible-body">
+        <label>目前專案</label>
+        <select id="projectSelect"></select>
+        <div class="actions">
+          <button onclick="createProject()">新增專案</button>
+          <button class="secondary" onclick="duplicateProject()">複製</button>
+          <button class="danger" onclick="deleteProject()">刪除</button>
+        </div>
+        <label>專案名稱</label>
+        <input id="projectName" placeholder="例如：2026-07-03 MET UV/chlorine" oninput="updateProjectName()" />
+        <div class="row">
+          <div>
+            <label>分析日期</label>
+            <input id="projectDate" type="date" onchange="saveState()" />
+          </div>
+          <div>
+            <label>操作者</label>
+            <input id="operator" placeholder="選填" oninput="saveState()" />
+          </div>
+        </div>
+        <label>備註</label>
+        <textarea id="projectNote" placeholder="例如：Agilent HPLC-DAD, 233 nm, 0.1% FA..." oninput="saveState()"></textarea>
+        <div class="actions">
+          <button class="green" onclick="exportJSON()">匯出 JSON</button>
+          <button class="ghost" onclick="document.getElementById('jsonImport').click()">匯入 JSON</button>
+          <input id="jsonImport" class="hide" type="file" accept=".json,application/json" onchange="importJSON(event)" />
+        </div>
+        <div class="actions">
+          <button class="green" onclick="exportCSV('calibration')">檢量線 CSV</button>
+          <button class="green" onclick="exportCSV('samples')">樣品 CSV</button>
+        </div>
+        <div id="saveStatus" class="small-note">尚未儲存</div>
+        </div>
+      </section>
+
+      <section id="chartSettings" class="card chart-settings-card">
+        <h2>圖表設定 <span class="badge">Style</span></h2>
+
+        <div class="chart-settings-scroll">
+          <div class="settings-section">
+            <h3>格式預設 <span>Format preset</span></h3>
+            <div class="preset-actions">
+              <button type="button" class="green" onclick="saveFormatPreset()">儲存目前格式為預設</button>
+              <button type="button" class="secondary" onclick="applyFormatPresetToCurrentProject()">套用預設到目前專案</button>
+              <button type="button" class="secondary" onclick="exportFormatPreset()">匯出格式預設</button>
+              <label class="button-like secondary" style="text-align:center;cursor:pointer">
+                匯入格式預設
+                <input type="file" accept=".json,application/json" style="display:none" onchange="importFormatPreset(event)" />
+              </label>
+              <button type="button" class="danger" onclick="clearFormatPreset()">清除格式預設</button>
+            </div>
+            <div id="formatPresetStatus" class="preset-note">尚未儲存格式預設。</div>
+          </div>
+
+          <div class="settings-section">
+            <h3>圖面與標題 <span>Title & canvas</span></h3>
+            <label>大標題</label>
+            <input id="chartTitle" value="Metformin degradation curve" oninput="saveState(); drawAll();" />
+            <div class="row">
+              <div>
+                <label>圖寬</label>
+                <input id="chartW" type="number" value="1240" min="600" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>圖高</label>
+                <input id="chartH" type="number" value="760" min="420" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>標題與圖格距離</label>
+                <input id="titleGap" type="number" min="-30" max="80" value="18" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>小數位數</label>
+                <input id="digits" type="number" min="0" max="6" value="3" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>大組別與曲線 <span>Group & series</span></h3>
+            <div class="row">
+              <div>
+                <label>目前繪圖大組別</label>
+                <select id="activePlotGroup" onchange="handlePlotGroupSelect();">
+                  <option value="__all__">全部曲線</option>
+                </select>
+              </div>
+              <div>
+                <label>說明</label>
+                <div class="status" style="margin-top:0">
+                  新增曲線的大組別請在「數據登錄」的曲線類型選擇。
+                </div>
+              </div>
+            </div>
+            <div class="group-buttons">
+              <button type="button" class="group-btn" data-group="MET" onclick="selectPlotGroup('MET')">MET</button>
+              <button type="button" class="group-btn" data-group="NaOCl" onclick="selectPlotGroup('NaOCl')">NaOCl</button>
+              <button type="button" class="group-btn" data-group="UV" onclick="selectPlotGroup('UV')">UV</button>
+              <button type="button" class="group-btn" data-group="pH" onclick="selectPlotGroup('pH')">pH</button>
+            </div>
+            <div class="row">
+              <div>
+                <label>Y 軸模式</label>
+                <select id="yMode" onchange="saveState(); drawAll();">
+                  <option value="conc">濃度 C</option>
+                  <option value="ratio">C/C0</option>
+                  <option value="removal">去除率 (%)</option>
+                  <option value="lnratio">ln(C/C0)</option>
+                </select>
+              </div>
+              <div>
+                <label>線條形式</label>
+                <select id="lineMode" onchange="saveState(); drawAll();">
+                  <option value="line-marker">線＋點</option>
+                  <option value="marker">只顯示點</option>
+                  <option value="line">只顯示線</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>座標軸標題 <span>Axis labels</span></h3>
+            <div class="row">
+              <div>
+                <label>X 軸標題</label>
+                <input id="xLabel" value="Time (sec)" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>Y 軸標題</label>
+                <input id="yLabel" value="Concentration (μM)" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>字體大小 <span>Times New Roman</span></h3>
+            <div class="row">
+              <div>
+                <label>大標題</label>
+                <input id="titleFontSize" type="number" min="8" max="60" value="26" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>座標軸標題</label>
+                <input id="axisFontSize" type="number" min="8" max="44" value="18" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>刻度文字</label>
+                <input id="tickFontSize" type="number" min="6" max="36" value="14" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>圖例文字</label>
+                <input id="legendFontSize" type="number" min="6" max="36" value="14" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>參數框文字</label>
+                <input id="paramFontSize" type="number" min="6" max="36" value="13" oninput="saveState(); drawAll();" />
+              </div>
+              <div></div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>座標軸範圍 <span>Axis range</span></h3>
+            <div class="row">
+              <div>
+                <label>X 軸最小值</label>
+                <input id="xMinManual" type="number" step="any" placeholder="自動" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>X 軸最大值</label>
+                <input id="xMaxManual" type="number" step="any" placeholder="自動" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>Y 軸最小值</label>
+                <input id="yMinManual" type="number" step="any" placeholder="自動" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>Y 軸最大值</label>
+                <input id="yMaxManual" type="number" step="any" placeholder="自動" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>格線與外框 <span>Grid & border</span></h3>
+            <div class="row">
+              <div>
+                <label>X 軸主格線數量</label>
+                <input id="xTickCount" type="number" min="2" max="20" value="6" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>Y 軸主格線數量</label>
+                <input id="yTickCount" type="number" min="2" max="20" value="6" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>格線粗細</label>
+                <input id="gridLineWidth" type="number" min="0" max="5" step="0.1" value="1" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>
+                  <input id="showGrid" type="checkbox" checked style="width:auto;margin-right:6px" onchange="saveState(); drawAll();" />
+                  顯示格線
+                </label>
+                <label>
+                  <input id="showAxisBorder" type="checkbox" checked style="width:auto;margin-right:6px" onchange="saveState(); drawAll();" />
+                  顯示外框座標軸
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>圖例 <span>Legend</span></h3>
+            <label>
+              <input id="showLegend" type="checkbox" checked style="width:auto;margin-right:6px" onchange="saveState(); drawAll();" />
+              顯示圖例
+            </label>
+            <div class="row">
+              <div>
+                <label>圖例 X 位置</label>
+                <input id="legendX" type="number" step="any" placeholder="自動" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>圖例 Y 位置</label>
+                <input id="legendY" type="number" step="any" placeholder="自動" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>參數框 <span>Parameter box</span></h3>
+            <label>
+              <input id="showParamBox" type="checkbox" checked style="width:auto;margin-right:6px" onchange="saveState(); drawAll();" />
+              圖中顯示參數設定
+            </label>
+            <label>參數文字</label>
+            <textarea id="paramText" placeholder="例如：MET = 60 μM; NaOCl = 150 μM; UV = 2.5 mW/cm²; pH = 7.0" oninput="saveState(); drawAll();"></textarea>
+            <div class="row">
+              <div>
+                <label>參數框 X 位置</label>
+                <input id="paramX" type="number" step="any" placeholder="自動" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>參數框 Y 位置</label>
+                <input id="paramY" type="number" step="any" placeholder="自動" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </aside>
+
+    <section>
+      <div class="tabs">
+        <button class="tab active" id="tabCal" onclick="switchTab('cal')">1. 檢量線</button>
+        <button class="tab" id="tabData" onclick="switchTab('data')">2. 數據登錄</button>
+        <button class="tab" id="tabPlot" onclick="switchTab('plot')">3. 降解曲線</button>
+      </div>
+
+      <section id="panelCal" class="card wide-panel">
+        <h2>檢量線設定 <span class="badge">Calibration</span></h2>
+        <div class="calibration-layout">
+          <div class="calibration-left">
+            <div class="calibration-box">
+              <h3>圖表與迴歸設定</h3>
+              <div class="row">
+                <div>
+                  <label>迴歸模式</label>
+                  <select id="regressionMode" onchange="saveState(); drawAll();">
+                    <option value="linear">線性 y = ax + b</option>
+                    <option value="zero">通過原點 y = ax</option>
+                  </select>
+                </div>
+                <div>
+                  <label>檢量線標題</label>
+                  <input id="calTitle" value="Calibration curve" oninput="saveState(); drawAll();" />
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <label>檢量線 X 軸標題</label>
+                  <input id="calXLabel" value="Concentration" oninput="saveState(); drawAll();" />
+                </div>
+                <div>
+                  <label>檢量線 Y 軸標題</label>
+                  <input id="calYLabel" value="Peak area" oninput="saveState(); drawAll();" />
+                </div>
+              </div>
+            </div>
+
+            <div class="calibration-box">
+              <div class="table-title-row" style="margin:0 0 10px">
+                <strong>檢量線資料</strong>
+                <div class="actions" style="margin:0">
+                  <button onclick="addCalRow()">新增點</button>
+                  <button class="danger" onclick="clearCalibration()">清空</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table id="calTable" class="data-entry-table">
+                  <thead>
+                    <tr>
+                      <th style="width:38%">濃度</th>
+                      <th style="width:42%">LC 積分面積</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div id="calResult" class="status calibration-result-box">請輸入至少 2 個檢量線點。</div>
+          </div>
+
+          <div>
+            <svg id="calSvg" viewBox="0 0 700 500" role="img" aria-label="Calibration curve"></svg>
+          </div>
+        </div>
+      </section>
+
+      <section id="panelData" class="card wide-panel hide">
+        <h2>降解數據登錄 <span class="badge">Data</span></h2>
+        <div class="control-group">
+          <div class="row3">
+            <div>
+              <label>MET 濃度 (μM)</label>
+              <input id="metConc" type="number" step="any" placeholder="例如 60" onchange="saveState()" />
+            </div>
+            <div>
+              <label>NaOCl 濃度 (μM)</label>
+              <input id="naoclConc" type="number" step="any" placeholder="例如 150" onchange="saveState()" />
+            </div>
+            <div>
+              <label>UV 光強度 (mW/cm²)</label>
+              <input id="uvIntensity" type="number" step="any" placeholder="例如 2.5" onchange="saveState()" />
+            </div>
+          </div>
+          <div class="row3">
+            <div>
+              <label>pH 值</label>
+              <input id="phValue" type="number" step="any" placeholder="例如 7.0" onchange="saveState()" />
+            </div>
+            <div>
+              <label>時間單位</label>
+              <select id="timeUnit" onchange="handleTimeUnitChange();">
+                <option value="sec">sec</option>
+                <option value="min">min</option>
+              </select>
+            </div>
+            <div>
+              <label>曲線類型</label>
+              <select id="seriesGroup" onchange="handleSeriesGroupChange();">
+                <option value="MET">MET</option>
+                <option value="NaOCl">NaOCl</option>
+                <option value="UV">UV</option>
+                <option value="pH">pH</option>
+                <option value="Share">Share</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>此組名稱</label>
+              <input id="seriesName" placeholder="例如 60MET-150NaOCl" onchange="saveState()" />
+            </div>
+            <div>
+              <label>圖示大小</label>
+              <input id="markerSize" type="number" min="2" max="30" step="0.5" value="6.5" onchange="saveState()" />
+            </div>
+          </div>
+          <div class="shared-options">
+            <div class="share-legend-grid">
+              <div><label>MET 圖例</label><input id="legendNameMET" placeholder="MET 圖中顯示名稱" onchange="saveState()" /></div>
+              <div><label>NaOCl 圖例</label><input id="legendNameNaOCl" placeholder="NaOCl 圖中顯示名稱" onchange="saveState()" /></div>
+              <div><label>UV 圖例</label><input id="legendNameUV" placeholder="UV 圖中顯示名稱" onchange="saveState()" /></div>
+              <div><label>pH 圖例</label><input id="legendNamepH" placeholder="pH 圖中顯示名稱" onchange="saveState()" /></div>
+            </div>
+            <div class="small-note">選 Share 時可填四組圖例名稱；選 MET、NaOCl、UV 或 pH 時，只保留該組圖例名稱，其它欄位會自動清空。</div>
+          </div>
+          <div class="actions">
+            <button onclick="addSampleRow()">新增時間點</button>
+            <button class="secondary" onclick="addSeriesFromCurrentForm('add')">新增曲線</button>
+            <button class="green" onclick="addSeriesFromCurrentForm('update')">更新曲線</button>
+            <button class="danger" onclick="clearCurrentRows()">清空表格</button>
+          </div>
+        </div>
+
+        <div class="table-title-row"><strong>時間與積分面積</strong></div>
+        <div class="table-wrap">
+          <table id="sampleInputTable" class="data-entry-table">
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>LC 積分面積</th>
+                <th>換算濃度</th>
+                <th>備註</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+
+        <div class="table-title-row" style="margin-top:24px"><h2 style="margin:0">已建立曲線</h2></div>
+        <div class="series-table-wrap">
+          <table id="seriesTable" class="data-entry-table">
+            <thead>
+              <tr>
+                <th>顯示</th>
+                <th>名稱</th>
+                <th>大組別 / 共用</th>
+                <th>參數</th>
+                <th>顏色</th>
+                <th>圖示</th>
+                <th>大小</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="panelPlot" class="card chart-card wide-panel hide">
+        <div class="toolbar">
+          <h2 style="margin:0">降解曲線 <span class="badge">Plot</span></h2>
+          <div class="actions" style="margin:0">
+            <button onclick="drawAll()">重新繪圖</button>
+            <button class="green" onclick="downloadSVG('chartSvg','degradation_curve.svg')">下載 SVG</button>
+            <button class="green" onclick="downloadPNG('chartSvg','degradation_curve.png')">下載 PNG</button>
+          </div>
+        </div>
+        <svg id="chartSvg" viewBox="0 0 1240 760" role="img" aria-label="Degradation curve"></svg>
+        <div id="plotMessage" class="small-note"></div>
+      </section>
+    </section>
+  </main>
+
+<script>
+const STORAGE_KEY = 'met_degradation_curve_tool_v1';
+const FORMAT_PRESET_KEY = 'met_degradation_curve_tool_format_preset_v1';
+let state = {
+  activeId: null,
+  projects: []
+};
+
+const defaultColors = ['#2563eb','#dc2626','#059669','#7c3aed','#ea580c','#0891b2','#be123c','#4f46e5'];
+const markerOptions = ['circle','square','diamond','triangle','triangle-down','cross'];
+
+function uid(){ return 'p_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+function newProject(name='新專案'){
+  const project = {
+    id: uid(),
+    name,
+    date: todayISO(),
+    operator: '',
+    note: '',
+    calibration: {
+      concUnit: 'μM',
+      areaUnit: 'Area',
+      regressionMode: 'linear',
+      calTitle: 'Calibration curve',
+      calXLabel: 'Concentration',
+      calYLabel: 'Peak area',
+      points: [{conc:0, area:0}, {conc:10, area:1200}, {conc:25, area:3100}, {conc:50, area:6200}]
+    },
+    input: {
+      metConc: '',
+      naoclConc: '',
+      uvIntensity: '',
+      phValue: '',
+      timeUnit: 'sec',
+      seriesName: '',
+      seriesGroup: '',
+      legendName: '',
+      shareEnabled: false,
+      shareGroups: [],
+      legendNameMET: '',
+      legendNameNaOCl: '',
+      legendNameUV: '',
+      legendNamepH: '',
+      markerSize: 6.5,
+      editingSeriesId: '',
+      rows: [{time:0, area:'', note:''}]
+    },
+    series: [],
+    chart: {
+      title: 'Metformin degradation curve',
+      xLabel: 'Time (sec)',
+      yLabel: 'Concentration (μM)',
+      yMode: 'conc',
+      lineMode: 'line-marker',
+      activePlotGroup: '__all__',
+      defaultSeriesGroup: '',
+      width: 1240,
+      height: 760,
+      legendPosition: 'manual',
+      showLegend: true,
+      legendX: '',
+      legendY: '',
+      digits: 3,
+      showParamBox: true,
+      paramText: '',
+      titleFontSize: 26,
+      axisFontSize: 18,
+      tickFontSize: 14,
+      legendFontSize: 14,
+      paramFontSize: 13,
+      gridLineWidth: 1,
+      xMinManual: '',
+      xMaxManual: '',
+      yMinManual: '',
+      yMaxManual: '',
+      xTickCount: 6,
+      yTickCount: 6,
+      showGrid: true,
+      showAxisBorder: true,
+      titleGap: 18,
+      paramX: '',
+      paramY: ''
+    }
+  };
+  applyStoredFormatPreset(project);
+  return project;
+}
+
+function clonePlain(obj){
+  return JSON.parse(JSON.stringify(obj || {}));
+}
+
+function currentFormatPreset(){
+  saveState();
+  const p = activeProject();
+  return {
+    version: 1,
+    savedAt: new Date().toISOString(),
+    calibration: {
+      regressionMode: p.calibration.regressionMode,
+      calTitle: p.calibration.calTitle,
+      calXLabel: p.calibration.calXLabel,
+      calYLabel: p.calibration.calYLabel
+    },
+    inputDefaults: {
+      timeUnit: p.input.timeUnit,
+      seriesGroup: p.input.seriesGroup,
+      markerSize: p.input.markerSize
+    },
+    chart: clonePlain(p.chart)
+  };
+}
+
+function applyFormatPresetObject(project, preset){
+  if(!project || !preset) return;
+  project.calibration ||= {};
+  project.input ||= {};
+  project.chart ||= {};
+
+  if(preset.calibration){
+    project.calibration.regressionMode = preset.calibration.regressionMode || project.calibration.regressionMode || 'linear';
+    project.calibration.calTitle = preset.calibration.calTitle || project.calibration.calTitle || 'Calibration curve';
+    project.calibration.calXLabel = preset.calibration.calXLabel || project.calibration.calXLabel || 'Concentration';
+    project.calibration.calYLabel = preset.calibration.calYLabel || project.calibration.calYLabel || 'Peak area';
+  }
+
+  if(preset.inputDefaults){
+    project.input.timeUnit = preset.inputDefaults.timeUnit || project.input.timeUnit || 'sec';
+    project.input.seriesGroup = preset.inputDefaults.seriesGroup || project.input.seriesGroup || '';
+    project.input.markerSize = Number(preset.inputDefaults.markerSize) || Number(project.input.markerSize) || 6.5;
+  }
+
+  if(preset.chart){
+    project.chart = {...project.chart, ...clonePlain(preset.chart)};
+  }
+}
+
+function readStoredFormatPreset(){
+  try{
+    const raw = localStorage.getItem(FORMAT_PRESET_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(err){
+    console.warn('Format preset read failed', err);
+    return null;
+  }
+}
+
+function applyStoredFormatPreset(project){
+  const preset = readStoredFormatPreset();
+  if(preset) applyFormatPresetObject(project, preset);
+}
+
+function saveFormatPreset(){
+  const preset = currentFormatPreset();
+  localStorage.setItem(FORMAT_PRESET_KEY, JSON.stringify(preset));
+  updateFormatPresetStatus();
+  alert('已將目前格式儲存為預設。之後新增專案會自動套用此格式。');
+}
+
+function applyFormatPresetToCurrentProject(){
+  const preset = readStoredFormatPreset();
+  if(!preset){
+    alert('目前尚未儲存格式預設。');
+    return;
+  }
+  applyFormatPresetObject(activeProject(), preset);
+  renderAll();
+  saveState();
+  alert('已套用格式預設到目前專案。');
+}
+
+function clearFormatPreset(){
+  if(!confirm('確定要清除已儲存的格式預設嗎？')) return;
+  localStorage.removeItem(FORMAT_PRESET_KEY);
+  updateFormatPresetStatus();
+  alert('已清除格式預設。');
+}
+
+function exportFormatPreset(){
+  const preset = readStoredFormatPreset() || currentFormatPreset();
+  downloadText(JSON.stringify(preset, null, 2), 'met_degradation_format_preset.json', 'application/json');
+}
+
+function importFormatPreset(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const preset = JSON.parse(e.target.result);
+      if(!preset.chart && !preset.calibration){
+        alert('格式預設 JSON 不符合。');
+        return;
+      }
+      localStorage.setItem(FORMAT_PRESET_KEY, JSON.stringify(preset));
+      updateFormatPresetStatus();
+      alert('格式預設已匯入。之後新增專案會自動套用。');
+    }catch(err){
+      alert('匯入格式預設失敗：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function updateFormatPresetStatus(){
+  const el = document.getElementById('formatPresetStatus');
+  if(!el) return;
+  const preset = readStoredFormatPreset();
+  if(!preset){
+    el.textContent = '尚未儲存格式預設。';
+    return;
+  }
+  const date = preset.savedAt ? new Date(preset.savedAt).toLocaleString() : '未知時間';
+  el.textContent = `已儲存格式預設（${date}）。新增專案會自動套用；也可手動套用到目前專案。`;
+}
+
+
+function activeProject(){
+  if(!state.projects.length){
+    const p = newProject('2026 MET 降解測試');
+    state.projects.push(p);
+    state.activeId = p.id;
+  }
+  let p = state.projects.find(x => x.id === state.activeId);
+  if(!p){
+    p = state.projects[0];
+    state.activeId = p.id;
+  }
+  ensureProjectShape(p);
+  return p;
+}
+
+function ensureProjectShape(p){
+  p.calibration ||= {};
+  p.calibration.points ||= [];
+  p.input ||= {};
+  p.input.rows ||= [];
+  p.series ||= [];
+  p.chart ||= {};
+  p.chart.title ??= 'Metformin degradation curve';
+  p.chart.xLabel ??= 'Time (sec)';
+  p.chart.yLabel ??= 'Concentration (μM)';
+  p.chart.yMode ??= 'conc';
+  p.chart.lineMode ??= 'line-marker';
+  p.chart.activePlotGroup ??= '__all__';
+  p.chart.defaultSeriesGroup ??= '';
+  p.input.seriesGroup ??= '';
+  p.input.legendName ??= '';
+  p.input.shareEnabled ??= false;
+  p.input.shareGroups ??= [];
+  p.input.legendNameMET ??= '';
+  p.input.legendNameNaOCl ??= '';
+  p.input.legendNameUV ??= '';
+  p.input.legendNamepH ??= '';
+  p.input.markerSize ??= 6.5;
+  p.input.editingSeriesId ??= '';
+  p.series.forEach(s => {
+    s.group = canonicalGroupName(s.group || '');
+    if(s.group === 'Share'){
+      s.shareEnabled = true;
+      s.shareGroups = ['MET','NaOCl','UV','pH'];
+      s.group = '';
+    }
+    s.shareEnabled ??= false;
+    s.shareGroups = normalizeShareGroups(s.shareGroups || []);
+    s.legendName ??= s.name || '';
+    s.legendNames ||= {};
+    s.legendNames.MET ??= '';
+    s.legendNames.NaOCl ??= '';
+    s.legendNames.UV ??= '';
+    s.legendNames.pH ??= '';
+    s.markerSize ??= 6.5;
+    if(s.rows) s.rows.sort((a,b)=>(Number(a.time)||0)-(Number(b.time)||0));
+  });
+  p.chart.width ??= 1100;
+  p.chart.height ??= 720;
+  p.chart.legendPosition ??= 'right';
+  p.chart.digits ??= 3;
+  p.chart.showParamBox ??= true;
+  p.chart.paramText ??= '';
+  p.chart.titleFontSize ??= 26;
+  p.chart.axisFontSize ??= 18;
+  p.chart.tickFontSize ??= 14;
+  p.chart.legendFontSize ??= 14;
+  p.chart.paramFontSize ??= 13;
+  p.chart.gridLineWidth ??= 1;
+  p.chart.xMinManual ??= '';
+  p.chart.xMaxManual ??= '';
+  p.chart.yMinManual ??= '';
+  p.chart.yMaxManual ??= '';
+  p.chart.xTickCount ??= 6;
+  p.chart.yTickCount ??= 6;
+  p.chart.showGrid ??= true;
+  p.chart.showAxisBorder ??= true;
+  p.chart.titleGap ??= 18;
+  p.chart.paramX ??= '';
+  p.chart.paramY ??= '';
+  p.calibration.calTitle ??= 'Calibration curve';
+  p.calibration.calXLabel ??= 'Concentration';
+  p.calibration.calYLabel ??= 'Peak area';
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) state = JSON.parse(raw);
+  }catch(e){
+    console.warn(e);
+  }
+  if(!state.projects || !state.projects.length){
+    const p = newProject('MET UV/chlorine 示例專案');
+    state.projects = [p];
+    state.activeId = p.id;
+  }
+}
+
+function saveState(){
+  const p = activeProject();
+  p.date = val('projectDate');
+  p.operator = val('operator');
+  p.note = val('projectNote');
+
+  p.calibration.regressionMode = val('regressionMode');
+  p.calibration.calTitle = val('calTitle');
+  p.calibration.calXLabel = val('calXLabel');
+  p.calibration.calYLabel = val('calYLabel');
+  p.calibration.points = readCalTable();
+
+  p.input.metConc = val('metConc');
+  p.input.naoclConc = val('naoclConc');
+  p.input.uvIntensity = val('uvIntensity');
+  p.input.phValue = val('phValue');
+  p.input.timeUnit = val('timeUnit');
+  p.input.seriesName = val('seriesName');
+  p.input.seriesGroup = canonicalGroupName(val('seriesGroup') || 'MET');
+  p.input.shareEnabled = p.input.seriesGroup === 'Share';
+  p.input.shareGroups = p.input.seriesGroup === 'Share' ? ['MET','NaOCl','UV','pH'] : [p.input.seriesGroup].filter(g => ['MET','NaOCl','UV','pH'].includes(g));
+  syncLegendFieldsToCurveType(true);
+  p.input.legendNameMET = val('legendNameMET');
+  p.input.legendNameNaOCl = val('legendNameNaOCl');
+  p.input.legendNameUV = val('legendNameUV');
+  p.input.legendNamepH = val('legendNamepH');
+  p.input.legendName = p.input.shareEnabled ? '' : ({
+    MET: p.input.legendNameMET,
+    NaOCl: p.input.legendNameNaOCl,
+    UV: p.input.legendNameUV,
+    pH: p.input.legendNamepH
+  }[p.input.seriesGroup] || '');
+  p.input.markerSize = Number(val('markerSize')) || 6.5;
+  p.input.rows = readSampleInputTable();
+
+  p.chart.title = val('chartTitle');
+  p.chart.xLabel = val('xLabel');
+  p.chart.yLabel = val('yLabel');
+  p.chart.yMode = val('yMode');
+  p.chart.lineMode = val('lineMode');
+  p.chart.activePlotGroup = val('activePlotGroup') === '__all__' ? '__all__' : canonicalGroupName(val('activePlotGroup'));
+  p.chart.width = Number(val('chartW')) || 1100;
+  p.chart.height = Number(val('chartH')) || 720;
+  p.chart.legendPosition = 'manual';
+  p.chart.showLegend = document.getElementById('showLegend').checked;
+  p.chart.legendX = val('legendX');
+  p.chart.legendY = val('legendY');
+  p.chart.digits = Number(val('digits')) || 3;
+  p.chart.showParamBox = document.getElementById('showParamBox').checked;
+  p.chart.paramText = val('paramText');
+  p.chart.titleFontSize = Number(val('titleFontSize')) || 26;
+  p.chart.axisFontSize = Number(val('axisFontSize')) || 18;
+  p.chart.tickFontSize = Number(val('tickFontSize')) || 14;
+  p.chart.legendFontSize = Number(val('legendFontSize')) || 14;
+  p.chart.paramFontSize = Number(val('paramFontSize')) || 13;
+  p.chart.gridLineWidth = Number(val('gridLineWidth'));
+  p.chart.xMinManual = val('xMinManual');
+  p.chart.xMaxManual = val('xMaxManual');
+  p.chart.yMinManual = val('yMinManual');
+  p.chart.yMaxManual = val('yMaxManual');
+  p.chart.xTickCount = Number(val('xTickCount')) || 6;
+  p.chart.yTickCount = Number(val('yTickCount')) || 6;
+  p.chart.showGrid = document.getElementById('showGrid').checked;
+  p.chart.showAxisBorder = document.getElementById('showAxisBorder').checked;
+  p.chart.titleGap = Number(val('titleGap')) || 18;
+  p.chart.paramX = val('paramX');
+  p.chart.paramY = val('paramY');
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  document.getElementById('saveStatus').textContent = '已儲存於本機瀏覽器：' + new Date().toLocaleString();
+}
+
+function val(id){ return document.getElementById(id).value; }
+function setVal(id,v){ document.getElementById(id).value = v ?? ''; }
+
+function renderProjectSelect(){
+  const sel = document.getElementById('projectSelect');
+  sel.innerHTML = '';
+  state.projects.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name || '未命名專案';
+    sel.appendChild(opt);
+  });
+  sel.value = state.activeId;
+  sel.onchange = () => { state.activeId = sel.value; renderAll(); saveState(); };
+}
+
+function canonicalGroupName(group){
+  const g = String(group || '').trim();
+  const lower = g.toLowerCase();
+  if(lower === 'met' || lower.includes('contamin') || lower.includes('metformin')) return 'MET';
+  if(lower === 'naocl' || lower.includes('oxidant') || lower.includes('chlorine') || lower.includes('hypochlorite')) return 'NaOCl';
+  if(lower === 'uv' || lower.includes('light')) return 'UV';
+  if(lower === 'ph' || lower === 'pH'.toLowerCase() || lower.includes('ph value')) return 'pH';
+  if(lower === 'share' || lower === 'shared' || lower.includes('common')) return 'Share';
+  return g;
+}
+
+function fixedGroups(){
+  return ['MET','NaOCl','UV','pH'];
+}
+
+function renderPlotGroupSelect(){
+  const sel = document.getElementById('activePlotGroup');
+  if(!sel) return;
+  const p = activeProject();
+  const current = p.chart.activePlotGroup || sel.value || '__all__';
+  const counts = {};
+  fixedGroups().forEach(g => counts[g] = 0);
+  const others = new Set();
+
+  p.series.forEach(s => {
+    const cg = canonicalGroupName(s.group || '');
+    if(fixedGroups().includes(cg)){
+      s.group = cg;
+      counts[cg] += 1;
+    }else if(cg && cg !== 'Share'){
+      others.add(cg);
+    }
+    if(s.shareEnabled){
+      normalizeShareGroups(s.shareGroups || []).forEach(g => counts[g] = (counts[g] || 0) + 1);
+    }
+  });
+
+  sel.innerHTML = '<option value="__all__">全部曲線</option>';
+  fixedGroups().forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g;
+    opt.textContent = counts[g] ? `${g}（${counts[g]}）` : g;
+    sel.appendChild(opt);
+  });
+  [...others].sort().forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g;
+    opt.textContent = `其他：${g}`;
+    sel.appendChild(opt);
+  });
+
+  const validValues = ['__all__', ...fixedGroups(), ...others];
+  sel.value = validValues.includes(current) ? current : '__all__';
+  p.chart.activePlotGroup = sel.value;
+  updateGroupButtons();
+}
+
+function updateGroupButtons(){
+  const p = activeProject();
+  const active = p.chart.activePlotGroup || '__all__';
+  document.querySelectorAll('.group-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.group === active);
+  });
+}
+
+function selectPlotGroup(group){
+  const p = activeProject();
+  const g = canonicalGroupName(group);
+  p.chart.activePlotGroup = g;
+  const sel = document.getElementById('activePlotGroup');
+  if(sel) sel.value = g;
+  renderPlotGroupSelect();
+  saveState();
+  drawAll();
+}
+
+function handlePlotGroupSelect(){
+  const p = activeProject();
+  p.chart.activePlotGroup = val('activePlotGroup');
+  updateGroupButtons();
+  saveState();
+  drawAll();
+}
+
+function handleDefaultGroupSelect(){
+  saveState();
+}
+
+
+
+function currentAutoSeriesGroup(){
+  const g = canonicalGroupName(val('seriesGroup') || activeProject().input.seriesGroup || 'MET');
+  if(['MET','NaOCl','UV','pH'].includes(g)) return g;
+  return 'MET';
+}
+
+function handleSeriesGroupChange(){
+  const g = canonicalGroupName(val('seriesGroup') || 'MET');
+  if(g === 'Share'){
+    setShareGroupChecks(['MET','NaOCl','UV','pH']);
+  }else{
+    setShareGroupChecks([g]);
+    syncLegendFieldsToCurveType(true);
+  }
+  updateShareControlsEnabled();
+  saveState();
+  drawAll();
+}
+
+function normalizeShareGroups(groups){
+  const allowed = ['MET','NaOCl','UV','pH'];
+  return [...new Set((groups || []).map(canonicalGroupName).filter(g => allowed.includes(g)))];
+}
+
+function readShareGroupChecks(){
+  const ids = [
+    ['MET','shareGroupMET'],
+    ['NaOCl','shareGroupNaOCl'],
+    ['UV','shareGroupUV'],
+    ['pH','shareGrouppH']
+  ];
+  return ids.filter(([g,id]) => document.getElementById(id)?.checked).map(([g]) => g);
+}
+
+function setShareGroupChecks(groups){
+  const set = new Set(normalizeShareGroups(groups));
+  [['MET','shareGroupMET'],['NaOCl','shareGroupNaOCl'],['UV','shareGroupUV'],['pH','shareGrouppH']].forEach(([g,id]) => {
+    const el = document.getElementById(id);
+    if(el) el.checked = set.has(g);
+  });
+}
+
+function updateShareControlsEnabled(){
+  const type = canonicalGroupName(val('seriesGroup') || 'MET');
+  const enabledGroups = type === 'Share' ? ['MET','NaOCl','UV','pH'] : [type];
+  [
+    ['MET','legendNameMET'],
+    ['NaOCl','legendNameNaOCl'],
+    ['UV','legendNameUV'],
+    ['pH','legendNamepH']
+  ].forEach(([g,id]) => {
+    const el = document.getElementById(id);
+    if(el) el.disabled = !enabledGroups.includes(g);
+  });
+}
+
+function syncLegendFieldsToCurveType(clearDisabled=true){
+  const type = canonicalGroupName(val('seriesGroup') || 'MET');
+  if(type === 'Share') return;
+  const map = {
+    MET: 'legendNameMET',
+    NaOCl: 'legendNameNaOCl',
+    UV: 'legendNameUV',
+    pH: 'legendNamepH'
+  };
+  Object.entries(map).forEach(([g,id]) => {
+    const el = document.getElementById(id);
+    if(el && g !== type && clearDisabled) el.value = '';
+  });
+}
+
+function handleShareEnabledChange(){
+  handleSeriesGroupChange();
+}
+
+function seriesInPlotGroup(s, selectedGroup){
+  if(selectedGroup === '__all__') return true;
+  const g = canonicalGroupName(s.group || '');
+  if(g === selectedGroup) return true;
+  return !!s.shareEnabled && normalizeShareGroups(s.shareGroups || []).includes(selectedGroup);
+}
+
+function renderAll(){
+  const p = activeProject();
+  renderProjectSelect();
+  setVal('projectName', p.name);
+  setVal('projectDate', p.date);
+  setVal('operator', p.operator);
+  setVal('projectNote', p.note);
+
+  setVal('regressionMode', p.calibration.regressionMode);
+  setVal('calTitle', p.calibration.calTitle);
+  setVal('calXLabel', p.calibration.calXLabel);
+  setVal('calYLabel', p.calibration.calYLabel);
+  renderCalTable();
+
+  setVal('metConc', p.input.metConc);
+  setVal('naoclConc', p.input.naoclConc);
+  setVal('uvIntensity', p.input.uvIntensity);
+  setVal('phValue', p.input.phValue);
+  setVal('timeUnit', p.input.timeUnit);
+  setVal('seriesName', p.input.seriesName);
+  setVal('seriesGroup', p.input.shareEnabled && normalizeShareGroups(p.input.shareGroups || []).length >= 4 ? 'Share' : canonicalGroupName(p.input.seriesGroup || 'MET'));
+  setShareGroupChecks(p.input.shareGroups || []);
+  setVal('legendNameMET', p.input.legendNameMET || '');
+  setVal('legendNameNaOCl', p.input.legendNameNaOCl || '');
+  setVal('legendNameUV', p.input.legendNameUV || '');
+  setVal('legendNamepH', p.input.legendNamepH || '');
+  syncLegendFieldsToCurveType(true);
+  updateShareControlsEnabled();
+  setVal('markerSize', p.input.markerSize || 6.5);
+  renderSampleInputTable();
+  renderSeriesTable();
+
+  setVal('chartTitle', p.chart.title);
+  setVal('xLabel', p.chart.xLabel);
+  setVal('yLabel', p.chart.yLabel);
+  setVal('yMode', p.chart.yMode);
+  setVal('lineMode', p.chart.lineMode);
+  renderPlotGroupSelect();
+  setVal('activePlotGroup', p.chart.activePlotGroup || '__all__');
+  setVal('chartW', p.chart.width);
+  setVal('chartH', p.chart.height);
+  document.getElementById('showLegend').checked = p.chart.showLegend !== false;
+  setVal('legendX', p.chart.legendX);
+  setVal('legendY', p.chart.legendY);
+  setVal('digits', p.chart.digits);
+  document.getElementById('showParamBox').checked = !!p.chart.showParamBox;
+  setVal('paramText', p.chart.paramText);
+  setVal('titleFontSize', p.chart.titleFontSize);
+  setVal('axisFontSize', p.chart.axisFontSize);
+  setVal('tickFontSize', p.chart.tickFontSize);
+  setVal('legendFontSize', p.chart.legendFontSize);
+  setVal('paramFontSize', p.chart.paramFontSize);
+  setVal('gridLineWidth', p.chart.gridLineWidth);
+  setVal('xMinManual', p.chart.xMinManual);
+  setVal('xMaxManual', p.chart.xMaxManual);
+  setVal('yMinManual', p.chart.yMinManual);
+  setVal('yMaxManual', p.chart.yMaxManual);
+  setVal('xTickCount', p.chart.xTickCount);
+  setVal('yTickCount', p.chart.yTickCount);
+  document.getElementById('showGrid').checked = !!p.chart.showGrid;
+  document.getElementById('showAxisBorder').checked = !!p.chart.showAxisBorder;
+  setVal('titleGap', p.chart.titleGap);
+  setVal('paramX', p.chart.paramX);
+  setVal('paramY', p.chart.paramY);
+
+  drawAll();
+}
+
+function updateProjectName(){
+  const p = activeProject();
+  p.name = val('projectName') || '未命名專案';
+  renderProjectSelect();
+  saveState();
+}
+
+function createProject(){
+  const name = prompt('請輸入新專案名稱：', new Date().toISOString().slice(0,10) + ' MET 降解');
+  if(name === null) return;
+  const p = newProject(name || '未命名專案');
+  state.projects.push(p);
+  state.activeId = p.id;
+  renderAll();
+  saveState();
+}
+
+function duplicateProject(){
+  const old = activeProject();
+  const copy = JSON.parse(JSON.stringify(old));
+  copy.id = uid();
+  copy.name = (old.name || '專案') + ' - 複製';
+  state.projects.push(copy);
+  state.activeId = copy.id;
+  renderAll();
+  saveState();
+}
+
+function deleteProject(){
+  if(state.projects.length <= 1){
+    alert('至少需要保留一個專案。');
+    return;
+  }
+  const p = activeProject();
+  if(!confirm('確定刪除專案「' + p.name + '」？')) return;
+  state.projects = state.projects.filter(x => x.id !== p.id);
+  state.activeId = state.projects[0].id;
+  renderAll();
+  saveState();
+}
+
+function renderCalTable(){
+  const p = activeProject();
+  const tb = document.querySelector('#calTable tbody');
+  tb.innerHTML = '';
+  p.calibration.points.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input data-nav="1" type="number" step="any" value="${safe(row.conc)}" oninput="saveState(); drawAll();" onchange="sortCalibrationRowsAndRender();"></td>
+      <td><input data-nav="1" type="number" step="any" value="${safe(row.area)}" oninput="saveState(); drawAll();" onchange="sortCalibrationRowsAndRender();"></td>
+      <td><button class="mini danger" onclick="removeCalRow(${i})">刪除</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function readCalTable(){
+  return [...document.querySelectorAll('#calTable tbody tr')].map(tr => {
+    const inputs = tr.querySelectorAll('input');
+    return {conc: Number(inputs[0].value), area: Number(inputs[1].value)};
+  }).filter(r => Number.isFinite(r.conc) && Number.isFinite(r.area))
+    .sort((a,b)=>a.conc-b.conc);
+}
+
+
+function sortCalibrationRowsAndRender(){
+  const p = activeProject();
+  p.calibration.points = readCalTable();
+  renderCalTable();
+  saveState();
+  drawAll();
+}
+
+function addCalRow(){
+  const p = activeProject();
+  p.calibration.points = readCalTable();
+  p.calibration.points.push({conc:'', area:''});
+  renderCalTable();
+  saveState();
+  drawAll();
+}
+
+function removeCalRow(i){
+  const p = activeProject();
+  p.calibration.points = readCalTable();
+  p.calibration.points.splice(i,1);
+  renderCalTable();
+  saveState();
+  drawAll();
+}
+
+function clearCalibration(){
+  if(!confirm('確定清空檢量線資料？')) return;
+  activeProject().calibration.points = [];
+  renderCalTable();
+  saveState();
+  drawAll();
+}
+
+function loadDemoCalibration(){
+  activeProject().calibration.points = [
+    {conc:0, area:42},
+    {conc:10, area:1180},
+    {conc:30, area:3610},
+    {conc:60, area:7240},
+    {conc:100, area:12080}
+  ];
+  renderCalTable();
+  saveState();
+  drawAll();
+}
+
+function regression(points, mode='linear'){
+  const pts = points.filter(p => Number.isFinite(p.conc) && Number.isFinite(p.area));
+  if(pts.length < 2) return null;
+  const xs = pts.map(p => p.conc);
+  const ys = pts.map(p => p.area);
+  let a,b;
+  if(mode === 'zero'){
+    const sumxy = pts.reduce((s,p)=>s+p.conc*p.area,0);
+    const sumx2 = pts.reduce((s,p)=>s+p.conc*p.conc,0);
+    a = sumx2 === 0 ? 0 : sumxy/sumx2;
+    b = 0;
+  }else{
+    const n=pts.length;
+    const sx=xs.reduce((s,x)=>s+x,0), sy=ys.reduce((s,y)=>s+y,0);
+    const sxx=xs.reduce((s,x)=>s+x*x,0), sxy=pts.reduce((s,p)=>s+p.conc*p.area,0);
+    const denom = n*sxx - sx*sx;
+    if(Math.abs(denom) < 1e-12) return null;
+    a = (n*sxy - sx*sy)/denom;
+    b = (sy - a*sx)/n;
+  }
+  const ymean = ys.reduce((s,y)=>s+y,0)/ys.length;
+  const ssTot = ys.reduce((s,y)=>s+(y-ymean)**2,0);
+  const ssRes = pts.reduce((s,p)=>s+(p.area-(a*p.conc+b))**2,0);
+  const r2 = ssTot === 0 ? 1 : 1 - ssRes/ssTot;
+  return {a,b,r2,points:pts};
+}
+
+function areaToConc(area){
+  const p = activeProject();
+  const reg = regression(readCalTable(), p.calibration.regressionMode);
+  const y = Number(area);
+  if(!reg || !Number.isFinite(y) || Math.abs(reg.a) < 1e-12) return NaN;
+  return (y - reg.b) / reg.a;
+}
+
+function renderSampleInputTable(){
+  const p = activeProject();
+  const tb = document.querySelector('#sampleInputTable tbody');
+  tb.innerHTML = '';
+  p.input.rows.forEach((row, i) => {
+    const conc = areaToConc(row.area);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input data-nav="1" type="number" step="any" value="${safe(row.time)}" oninput="refreshSampleConcentrations(); saveState();" onchange="sortSampleRowsAndRender();"></td>
+      <td><input data-nav="1" type="number" step="any" value="${safe(row.area)}" oninput="refreshSampleConcentrations(); saveState();" onchange="sortSampleRowsAndRender();"></td>
+      <td class="mono conc-cell">${Number.isFinite(conc) ? fmt(conc,4) : '—'}</td>
+      <td><input data-nav="1" value="${escapeAttr(row.note || '')}" oninput="saveState();"></td>
+      <td><button class="mini danger" onclick="removeSampleRow(${i})">刪除</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function readSampleInputTable(){
+  return [...document.querySelectorAll('#sampleInputTable tbody tr')].map(tr => {
+    const inputs = tr.querySelectorAll('input');
+    return {
+      time: Number(inputs[0].value),
+      area: inputs[1].value === '' ? '' : Number(inputs[1].value),
+      note: inputs[2].value || ''
+    };
+  }).filter(r => Number.isFinite(r.time) || r.area !== '' || r.note)
+    .sort((a,b)=>{
+      const at = Number.isFinite(a.time) ? a.time : Number.POSITIVE_INFINITY;
+      const bt = Number.isFinite(b.time) ? b.time : Number.POSITIVE_INFINITY;
+      return at-bt;
+    });
+}
+
+function refreshSampleConcentrations(){
+  [...document.querySelectorAll('#sampleInputTable tbody tr')].forEach(tr => {
+    const inputs = tr.querySelectorAll('input');
+    const c = areaToConc(inputs[1].value);
+    tr.querySelector('.conc-cell').textContent = Number.isFinite(c) ? fmt(c,4) : '—';
+  });
+}
+
+
+function sortSampleRowsAndRender(){
+  const p = activeProject();
+  p.input.rows = readSampleInputTable();
+  renderSampleInputTable();
+  saveState();
+}
+
+function addSampleRow(){
+  const p = activeProject();
+  p.input.rows = readSampleInputTable();
+  p.input.rows.push({time:'', area:'', note:''});
+  renderSampleInputTable();
+  saveState();
+}
+
+function removeSampleRow(i){
+  const p = activeProject();
+  p.input.rows = readSampleInputTable();
+  p.input.rows.splice(i,1);
+  renderSampleInputTable();
+  saveState();
+}
+
+function clearCurrentRows(){
+  if(!confirm('確定清空目前登錄表格？')) return;
+  activeProject().input.rows = [];
+  renderSampleInputTable();
+  saveState();
+}
+
+function seriesLabelFromParams(input){
+  if(input.seriesName) return input.seriesName;
+  const chunks = [];
+  if(input.metConc !== '') chunks.push(`${input.metConc} μM MET`);
+  if(input.naoclConc !== '') chunks.push(`${input.naoclConc} μM NaOCl`);
+  if(input.uvIntensity !== '') chunks.push(`${input.uvIntensity} mW/cm²`);
+  if(input.phValue !== '') chunks.push(`pH ${input.phValue}`);
+  return chunks.join(', ') || '未命名曲線';
+}
+
+function addSeriesFromCurrentForm(mode='add'){
+  saveState();
+  const p = activeProject();
+  const rows = readSampleInputTable().map(r => ({
+    time: Number(r.time),
+    area: Number(r.area),
+    conc: areaToConc(r.area),
+    note: r.note || ''
+  })).filter(r => Number.isFinite(r.time) && Number.isFinite(r.area) && Number.isFinite(r.conc));
+
+  if(rows.length < 1){
+    alert('請至少輸入一筆有效時間與積分面積資料。');
+    return;
+  }
+
+  rows.sort((a,b)=>a.time-b.time);
+  const name = seriesLabelFromParams(p.input);
+  let targetIdx = -1;
+
+  if(mode === 'update'){
+    if(p.input.editingSeriesId){
+      targetIdx = p.series.findIndex(s => s.id === p.input.editingSeriesId);
+    }
+    if(targetIdx < 0){
+      targetIdx = p.series.findIndex(s => s.name === name);
+    }
+    if(targetIdx < 0){
+      alert('找不到可更新的既有曲線。請先在「已建立曲線」按「編輯」，或確認此組名稱與既有曲線相同。');
+      return;
+    }
+  }
+
+  if(mode === 'add'){
+    const duplicated = p.series.some(s => s.name === name);
+    if(duplicated){
+      const ok = confirm('已有相同「此組名稱」的曲線。仍要新增成另一條曲線嗎？\n\n按「確定」會新增；按「取消」則不新增。');
+      if(!ok) return;
+    }
+  }
+
+  const oldSeries = targetIdx >= 0 ? p.series[targetIdx] : null;
+  const newSeries = {
+    id: oldSeries ? oldSeries.id : uid(),
+    visible: oldSeries ? oldSeries.visible !== false : true,
+    name,
+    metConc: p.input.metConc,
+    naoclConc: p.input.naoclConc,
+    uvIntensity: p.input.uvIntensity,
+    phValue: p.input.phValue,
+    timeUnit: p.input.timeUnit,
+    color: oldSeries ? oldSeries.color : defaultColors[p.series.length % defaultColors.length],
+    marker: oldSeries ? oldSeries.marker : markerOptions[p.series.length % markerOptions.length],
+    markerSize: Number(p.input.markerSize) || (oldSeries ? oldSeries.markerSize : 6.5),
+    group: currentAutoSeriesGroup(),
+    legendName: p.input.shareEnabled ? name : (p.input.legendName || name),
+    shareEnabled: !!p.input.shareEnabled,
+    shareGroups: p.input.shareEnabled ? normalizeShareGroups(p.input.shareGroups || []) : [],
+    legendNames: {
+      MET: p.input.legendNameMET || '',
+      NaOCl: p.input.legendNameNaOCl || '',
+      UV: p.input.legendNameUV || '',
+      pH: p.input.legendNamepH || ''
+    },
+    rows
+  };
+
+  if(mode === 'update'){
+    p.series[targetIdx] = newSeries;
+  }else{
+    p.series.push(newSeries);
+    p.input.editingSeriesId = newSeries.id;
+  }
+
+  if(!p.chart.paramText){
+    p.chart.paramText = makeParamText(p);
+    setVal('paramText', p.chart.paramText);
+  }
+  if(/^Time\s*\((sec|min)\)$/i.test(p.chart.xLabel || '') || !(p.chart.xLabel || '').trim()){
+    p.chart.xLabel = `Time (${p.input.timeUnit || 'sec'})`;
+    setVal('xLabel', p.chart.xLabel);
+  }
+
+  renderPlotGroupSelect();
+  renderSeriesTable();
+  saveState();
+  drawAll();
+  switchTab('plot');
+}
+function makeParamText(p){
+  const input = p.input;
+  const arr = [];
+  if(input.metConc !== '') arr.push(`MET = ${input.metConc} μM`);
+  if(input.naoclConc !== '') arr.push(`NaOCl = ${input.naoclConc} μM`);
+  if(input.uvIntensity !== '') arr.push(`UV = ${input.uvIntensity} mW/cm²`);
+  if(input.phValue !== '') arr.push(`pH = ${input.phValue}`);
+  return arr.join('; ');
+}
+
+function groupOptionsHtml(current){
+  const cg = canonicalGroupName(current);
+  const base = ['','MET','NaOCl','UV','pH'];
+  const labels = {'':'不指定','MET':'MET','NaOCl':'NaOCl','UV':'UV','pH':'pH'};
+  let options = base.map(v => `<option value="${v}" ${cg===v?'selected':''}>${labels[v]}</option>`).join('');
+  if(cg && !base.includes(cg)){
+    options += `<option value="${escapeAttr(cg)}" selected>其他：${escapeAttr(cg)}</option>`;
+  }
+  return options;
+}
+
+function renderSeriesTable(){
+  const p = activeProject();
+  const tb = document.querySelector('#seriesTable tbody');
+  tb.innerHTML = '';
+  p.series.forEach((s,i) => {
+    const tr = document.createElement('tr');
+    if(p.input.editingSeriesId && s.id === p.input.editingSeriesId){
+      tr.classList.add('editing-series-row');
+    }
+    tr.innerHTML = `
+      <td><input type="checkbox" ${s.visible ? 'checked' : ''} onchange="activeProject().series[${i}].visible=this.checked; saveState(); drawAll();" style="width:auto"></td>
+      <td><input data-nav="1" value="${escapeAttr(s.name)}" oninput="activeProject().series[${i}].name=this.value; saveState(); drawAll();"></td>
+      <td>
+        <span class="pill">${s.shareEnabled && normalizeShareGroups(s.shareGroups||[]).length >= 4 ? 'Share' : safe(canonicalGroupName(s.group || '') || 'MET')}</span>
+      </td>
+      <td>
+        <span class="pill">MET ${safe(s.metConc)} μM</span>
+        <span class="pill">NaOCl ${safe(s.naoclConc)} μM</span>
+        <span class="pill">UV ${safe(s.uvIntensity)}</span>
+        <span class="pill">pH ${safe(s.phValue)}</span>
+      </td>
+      <td><input data-nav="1" type="color" value="${s.color || defaultColors[i%defaultColors.length]}" oninput="activeProject().series[${i}].color=this.value; saveState(); drawAll();"></td>
+      <td>
+        <select data-nav="1" onchange="activeProject().series[${i}].marker=this.value; saveState(); drawAll();">
+          ${markerOptions.map(m => `<option value="${m}" ${s.marker===m?'selected':''}>${markerName(m)}</option>`).join('')}
+        </select>
+      </td>
+      <td><input data-nav="1" type="number" min="2" max="30" step="0.5" value="${safe(s.markerSize || 6.5)}" oninput="activeProject().series[${i}].markerSize=Number(this.value)||6.5; saveState(); drawAll();"></td>
+      <td>
+        <div class="series-action-buttons">
+          <button class="mini secondary" onclick="loadSeriesToForm(${i})">編輯</button>
+          <button class="mini danger" onclick="deleteSeries(${i})">刪除</button>
+        </div>
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+
+
+function toggleSeriesShare(index, checked){
+  const s = activeProject().series[index];
+  if(!s) return;
+  s.shareEnabled = checked;
+  if(checked && normalizeShareGroups(s.shareGroups || []).length === 0){
+    const g = canonicalGroupName(s.group || '');
+    s.shareGroups = ['MET','NaOCl','UV','pH'].includes(g) ? [g] : ['MET'];
+  }
+  renderSeriesTable();
+  saveState();
+  drawAll();
+}
+
+function toggleSeriesShareGroup(index, group, checked){
+  const s = activeProject().series[index];
+  if(!s) return;
+  const set = new Set(normalizeShareGroups(s.shareGroups || []));
+  if(checked) set.add(canonicalGroupName(group));
+  else set.delete(canonicalGroupName(group));
+  s.shareGroups = [...set];
+  saveState();
+  drawAll();
+}
+
+function markerName(m){
+  return {
+    circle:'圓形', square:'正方形', diamond:'菱形',
+    triangle:'三角形', 'triangle-down':'倒三角', cross:'十字'
+  }[m] || m;
+}
+
+function loadSeriesToForm(i){
+  const p = activeProject();
+  const s = p.series[i];
+  p.input.metConc = s.metConc;
+  p.input.naoclConc = s.naoclConc;
+  p.input.uvIntensity = s.uvIntensity;
+  p.input.phValue = s.phValue;
+  p.input.timeUnit = s.timeUnit || 'sec';
+  p.input.seriesName = s.name;
+  p.input.seriesGroup = s.shareEnabled && normalizeShareGroups(s.shareGroups || []).length >= 4 ? 'Share' : (s.group || 'MET');
+  p.input.legendName = '';
+  p.input.shareEnabled = !!s.shareEnabled;
+  p.input.shareGroups = normalizeShareGroups(s.shareGroups || []);
+  p.input.legendNameMET = (s.legendNames && s.legendNames.MET) || '';
+  p.input.legendNameNaOCl = (s.legendNames && s.legendNames.NaOCl) || '';
+  p.input.legendNameUV = (s.legendNames && s.legendNames.UV) || '';
+  p.input.legendNamepH = (s.legendNames && s.legendNames.pH) || '';
+  p.input.markerSize = s.markerSize || 6.5;
+  p.input.editingSeriesId = s.id;
+  p.input.rows = s.rows.map(r => ({time:r.time, area:r.area, note:r.note || ''}));
+  renderAll();
+  switchTab('data');
+}
+
+function deleteSeries(i){
+  if(!confirm('確定刪除此曲線？')) return;
+  const p = activeProject();
+  const removed = p.series[i];
+  p.series.splice(i,1);
+  if(removed && p.input.editingSeriesId === removed.id) p.input.editingSeriesId = '';
+  renderPlotGroupSelect();
+  renderSeriesTable();
+  saveState();
+  drawAll();
+}
+
+function loadDemoSamples(){
+  const p = activeProject();
+  p.input.metConc = 60;
+  p.input.naoclConc = 150;
+  p.input.uvIntensity = 2.5;
+  p.input.phValue = 7.0;
+  p.input.timeUnit = 'sec';
+  p.input.seriesName = '60MET-150NaOCl';
+  p.input.seriesGroup = p.chart.defaultSeriesGroup || 'MET';
+  p.input.legendName = 'MET = 60 μM';
+  p.input.markerSize = 6.5;
+  p.input.editingSeriesId = '';
+  const reg = regression(readCalTable(), p.calibration.regressionMode) || {a:120,b:40};
+  const times = [0,15,30,45,60,90,120,180,240,300];
+  const concs = [60,49,40,33,27,19,14,8,5,3.2];
+  p.input.rows = times.map((t,i)=>({time:t, area:Math.round(reg.a*concs[i]+reg.b), note:''}));
+  renderAll();
+  saveState();
+}
+
+function transformY(rows, mode){
+  const c0row = rows.find(r => Number.isFinite(r.conc));
+  const c0 = c0row ? c0row.conc : NaN;
+  return rows.map(r => {
+    let y = r.conc;
+    if(mode === 'ratio') y = Number.isFinite(c0) && c0 !== 0 ? r.conc/c0 : NaN;
+    if(mode === 'removal') y = Number.isFinite(c0) && c0 !== 0 ? (1-r.conc/c0)*100 : NaN;
+    if(mode === 'lnratio') y = Number.isFinite(c0) && c0 !== 0 && r.conc > 0 ? Math.log(r.conc/c0) : NaN;
+    return {...r, y};
+  }).filter(r => Number.isFinite(r.time) && Number.isFinite(r.y));
+}
+
+function drawAll(){
+  drawCalibration();
+  drawChart();
+}
+
+function drawCalibration(){
+  const p = activeProject();
+  const svg = document.getElementById('calSvg');
+  const W = 700, H = 500;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  clearSvg(svg);
+  const reg = regression(readCalTable(), p.calibration.regressionMode);
+  if(!reg){
+    document.getElementById('calResult').className = 'status warn';
+    document.getElementById('calResult').textContent = '請輸入至少 2 個有效檢量線點，且濃度不可全部相同。';
+    emptySvgMessage(svg, W, H, '尚無足夠檢量線資料');
+    return;
+  }
+  const digits = Number(val('digits')) || 3;
+  const formula = p.calibration.regressionMode === 'zero'
+    ? `Area = ${fmt(reg.a,digits)} × C`
+    : `Area = ${fmt(reg.a,digits)} × C ${reg.b >= 0 ? '+' : '-'} ${fmt(Math.abs(reg.b),digits)}`;
+  document.getElementById('calResult').className = reg.r2 >= .995 ? 'status good' : 'status';
+  document.getElementById('calResult').innerHTML = `<b>檢量線：</b><span class="mono">${formula}</span><br><b>R²：</b><span class="mono">${fmt(reg.r2,5)}</span>；樣品濃度 C = (Area - b) / a`;
+
+  const margin = {l:80,r:32,t:48,b:70};
+  const xs = reg.points.map(d=>d.conc);
+  const ys = reg.points.map(d=>d.area);
+  const xMax = niceMax(Math.max(...xs, 1));
+  const yMax = niceMax(Math.max(...ys, reg.a*xMax+reg.b, 1));
+  const sx = x => margin.l + (x/xMax)*(W-margin.l-margin.r);
+  const sy = y => H-margin.b - (y/yMax)*(H-margin.t-margin.b);
+
+  drawGrid(svg, W, H, margin, xMax, yMax, sx, sy);
+  addText(svg, W/2, 26, p.calibration.calTitle || 'Calibration curve', {size:20, weight:800, anchor:'middle'});
+  addText(svg, W/2, H-18, p.calibration.calXLabel || 'Concentration', {size:14, anchor:'middle'});
+  addRotatedText(svg, 22, H/2, p.calibration.calYLabel || 'Peak area', {size:14, anchor:'middle'});
+
+  const linePath = `M ${sx(0)} ${sy(reg.b)} L ${sx(xMax)} ${sy(reg.a*xMax+reg.b)}`;
+  addPath(svg, linePath, {stroke:'#111827', width:2.5, dash:'6 5'});
+  reg.points.forEach(d => addMarker(svg, sx(d.conc), sy(d.area), 'circle', '#2563eb', 6));
+}
+
+function drawChart(){
+  const p = activeProject();
+  const svg = document.getElementById('chartSvg');
+  const W = Math.max(600, Number(val('chartW')) || p.chart.width || 1240);
+  const H = Math.max(420, Number(val('chartH')) || p.chart.height || 760);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  clearSvg(svg);
+
+  const selectedGroup = val('activePlotGroup') === '__all__' ? '__all__' : canonicalGroupName(val('activePlotGroup') || '__all__');
+  const visible = p.series.filter(s => {
+    if(s.visible === false) return false;
+    return seriesInPlotGroup(s, selectedGroup);
+  });
+  if(!visible.length){
+    emptySvgMessage(svg, W, H, selectedGroup === '__all__' ? '尚未建立曲線：請先到「數據登錄」新增/更新為一組曲線' : '此大組別目前沒有可繪製的曲線');
+    document.getElementById('plotMessage').textContent = '目前沒有可繪製的曲線。';
+    return;
+  }
+
+  const yMode = val('yMode');
+  const all = [];
+  const seriesData = visible.map(s => {
+    const rows = transformY(s.rows, yMode);
+    rows.forEach(r => all.push(r));
+    return {series:s, rows};
+  }).filter(x => x.rows.length);
+
+  if(!all.length){
+    emptySvgMessage(svg, W, H, '曲線資料不足或無法換算');
+    return;
+  }
+
+  const legendPosition = 'manual';
+  const showLegend = document.getElementById('showLegend') ? document.getElementById('showLegend').checked : true;
+  const manualLegendX = parseOptionalNumber('legendX');
+  const manualLegendY = parseOptionalNumber('legendY');
+  const hasManualLegend = legendPosition === 'manual' || Number.isFinite(manualLegendX) || Number.isFinite(manualLegendY);
+  const isRightLegend = !hasManualLegend && ['right','right-top','right-bottom'].includes(legendPosition);
+  const isBottomLegend = !hasManualLegend && ['bottom','bottom-left','bottom-right'].includes(legendPosition);
+  const margin = {
+    l: 96,
+    r: isRightLegend ? 280 : 56,
+    t: 98,
+    b: isBottomLegend ? 145 : 88
+  };
+  const minX = Math.min(...all.map(d=>d.time));
+  const maxX0 = Math.max(...all.map(d=>d.time));
+  let minY = Math.min(...all.map(d=>d.y));
+  let maxY0 = Math.max(...all.map(d=>d.y));
+  if(yMode === 'removal') { minY = Math.min(0,minY); maxY0 = Math.max(100,maxY0); }
+  if(yMode === 'ratio') { minY = Math.min(0,minY); maxY0 = Math.max(1,maxY0); }
+  if(yMode === 'conc') { minY = Math.min(0,minY); }
+  if(minY === maxY0){ maxY0 = minY + 1; }
+
+  const xPad = (maxX0-minX)*0.04 || 1;
+  const yPad = (maxY0-minY)*0.08 || 1;
+  let xMin = Math.max(0, minX - xPad);
+  let xMax = niceMax(maxX0 + xPad);
+  let yMin = yMode === 'lnratio' ? minY - yPad : Math.min(0, minY - yPad);
+  let yMax = niceMax(maxY0 + yPad);
+
+  const mxMin = parseOptionalNumber('xMinManual');
+  const mxMax = parseOptionalNumber('xMaxManual');
+  const myMin = parseOptionalNumber('yMinManual');
+  const myMax = parseOptionalNumber('yMaxManual');
+  if(Number.isFinite(mxMin)) xMin = mxMin;
+  if(Number.isFinite(mxMax)) xMax = mxMax;
+  if(Number.isFinite(myMin)) yMin = myMin;
+  if(Number.isFinite(myMax)) yMax = myMax;
+  if(xMax <= xMin) xMax = xMin + 1;
+  if(yMax <= yMin) yMax = yMin + 1;
+
+  const plotW = W-margin.l-margin.r;
+  const plotH = H-margin.t-margin.b;
+  const sx = x => margin.l + ((x-xMin)/(xMax-xMin))*plotW;
+  const sy = y => H-margin.b - ((y-yMin)/(yMax-yMin))*plotH;
+
+  const titleFontSize = Number(val('titleFontSize')) || 26;
+  const titleGap = Number(val('titleGap')) || 18;
+  const axisFontSize = Number(val('axisFontSize')) || 18;
+  const tickFontSize = Number(val('tickFontSize')) || 14;
+  const legendFontSize = Number(val('legendFontSize')) || 14;
+  const paramFontSize = Number(val('paramFontSize')) || 13;
+  const gridLineWidth = Number(val('gridLineWidth'));
+  const xTickCount = Number(val('xTickCount')) || 6;
+  const yTickCount = Number(val('yTickCount')) || 6;
+  const showGrid = document.getElementById('showGrid').checked;
+  const showAxisBorder = document.getElementById('showAxisBorder').checked;
+
+  drawGrid(svg, W, H, margin, xMax, yMax, sx, sy, xMin, yMin, tickFontSize, true, xTickCount, yTickCount, showGrid, showAxisBorder, gridLineWidth);
+  addText(svg, W/2, Math.max(titleFontSize + 4, margin.t - titleGap), val('chartTitle') || 'Degradation curve', {size:titleFontSize, weight:700, anchor:'middle', font:'Times New Roman, Times, serif'});
+  addText(svg, W/2, H-30, val('xLabel') || `Time (${p.input.timeUnit || 'sec'})`, {size:axisFontSize, weight:700, anchor:'middle', font:'Times New Roman, Times, serif'});
+  addRotatedText(svg, 32, margin.t + plotH/2, val('yLabel') || autoYLabel(yMode), {size:axisFontSize, weight:700, anchor:'middle', font:'Times New Roman, Times, serif'});
+
+  const lineMode = val('lineMode');
+  seriesData.forEach((pack, i) => {
+    const s = pack.series;
+    const rows = pack.rows.sort((a,b)=>a.time-b.time);
+    const color = s.color || defaultColors[i % defaultColors.length];
+    if(lineMode !== 'marker'){
+      const path = rows.map((r,j)=>`${j?'L':'M'} ${sx(r.time)} ${sy(r.y)}`).join(' ');
+      addPath(svg, path, {stroke:color, width:3, fill:'none'});
+    }
+    if(lineMode !== 'line'){
+      rows.forEach(r => addMarker(svg, sx(r.time), sy(r.y), s.marker || 'circle', color, s.markerSize || 6.5));
+    }
+  });
+
+  if(document.getElementById('showParamBox').checked){
+    const text = val('paramText') || buildParamSummary(visible);
+    const manualParamX = parseOptionalNumber('paramX');
+    const manualParamY = parseOptionalNumber('paramY');
+    const paramBoxX = Number.isFinite(manualParamX) ? manualParamX : margin.l + 12;
+    const paramBoxY = Number.isFinite(manualParamY) ? manualParamY : margin.t + 12;
+    drawParamBox(svg, paramBoxX, paramBoxY, text, W - margin.l - margin.r - 24, paramFontSize);
+  }
+
+  if(showLegend){
+    drawLegend(svg, visible, 'manual', W, H, margin, legendFontSize, manualLegendX, manualLegendY, selectedGroup);
+  }
+
+  document.getElementById('plotMessage').textContent = `已繪製 ${seriesData.length} 組曲線；Y 軸模式：${autoYLabel(yMode)}。`;
+}
+
+function buildParamSummary(series){
+  return series.map(s => `${s.name}: MET ${s.metConc || '-'} μM, NaOCl ${s.naoclConc || '-'} μM, UV ${s.uvIntensity || '-'} mW/cm², pH ${s.phValue || '-'}`).join('\n');
+}
+
+function autoYLabel(mode){
+  return {conc:'Concentration', ratio:'C/C0', removal:'Removal (%)', lnratio:'ln(C/C0)'}[mode] || 'Y';
+}
+
+function drawGrid(svg, W, H, margin, xMax, yMax, sx, sy, xMin=0, yMin=0, tickFontSize=12, useTimes=false, xTickCount=6, yTickCount=6, showGrid=true, showAxisBorder=true, gridLineWidth=1){
+  const plotW = W-margin.l-margin.r;
+  const plotH = H-margin.t-margin.b;
+  addRect(svg, margin.l, margin.t, plotW, plotH, {fill:'#ffffff', stroke: showAxisBorder ? '#d1d5db' : 'none'});
+  const xTicks = makeTicks(xMin, xMax, xTickCount);
+  const yTicks = makeTicks(yMin, yMax, yTickCount);
+  const tickFont = useTimes ? 'Times New Roman, Times, serif' : undefined;
+  xTicks.forEach(t => {
+    const x = sx(t);
+    if(showGrid && gridLineWidth > 0) addLine(svg, x, margin.t, x, H-margin.b, {stroke:'#e5e7eb', width:gridLineWidth});
+    addLine(svg, x, H-margin.b, x, H-margin.b+6, {stroke:'#6b7280', width:1.2});
+    addText(svg, x, H-margin.b+tickFontSize+12, fmt(t,3), {size:tickFontSize, fill:'#4b5563', anchor:'middle', font:tickFont});
+  });
+  yTicks.forEach(t => {
+    const y = sy(t);
+    if(showGrid && gridLineWidth > 0) addLine(svg, margin.l, y, W-margin.r, y, {stroke:'#e5e7eb', width:gridLineWidth});
+    addLine(svg, margin.l-6, y, margin.l, y, {stroke:'#6b7280', width:1.2});
+    addText(svg, margin.l-10, y+tickFontSize/3, fmt(t,3), {size:tickFontSize, fill:'#4b5563', anchor:'end', font:tickFont});
+  });
+  addLine(svg, margin.l, H-margin.b, W-margin.r, H-margin.b, {stroke:'#111827', width:1.4});
+  addLine(svg, margin.l, margin.t, margin.l, H-margin.b, {stroke:'#111827', width:1.4});
+  if(showAxisBorder){
+    addLine(svg, W-margin.r, margin.t, W-margin.r, H-margin.b, {stroke:'#111827', width:1.0});
+    addLine(svg, margin.l, margin.t, W-margin.r, margin.t, {stroke:'#111827', width:1.0});
+  }
+}
+function drawParamBox(svg, x, y, text, maxWidth, fontSize=13){
+  const lines = String(text || '').split(/\n|;/).map(s=>s.trim()).filter(Boolean).slice(0,8);
+  if(!lines.length) return;
+  const lineH = fontSize * 1.42;
+  const rawWidth = Math.max(...lines.map(l => l.length*fontSize*0.54 + 30));
+  const width = Math.min(maxWidth, Math.max(80, rawWidth));
+  const height = 16 + lines.length*lineH;
+  addRect(svg, x, y, width, height, {fill:'rgba(248,250,252,.94)', stroke:'#cbd5e1', rx:8});
+  lines.forEach((line,i)=> addText(svg, x+12, y+fontSize+10+i*lineH, line, {size:fontSize, fill:'#334155', font:'Times New Roman, Times, serif'}));
+}
+
+function seriesLegendLabel(s, i, group=null){
+  const g = group && group !== '__all__' ? canonicalGroupName(group) : null;
+  if(s.shareEnabled && g && s.legendNames && normalizeShareGroups(s.shareGroups || []).includes(g)){
+    const groupLabel = (s.legendNames[g] || '').trim();
+    if(groupLabel) return groupLabel;
+  }
+  return (s.legendName || '').trim() || (s.name || '').trim() || `Series ${i+1}`;
+}
+
+function setSeriesGroupLegend(index, group, value){
+  const p = activeProject();
+  const s = p.series[index];
+  if(!s) return;
+  s.legendNames ||= {};
+  s.legendNames[canonicalGroupName(group)] = value;
+  saveState();
+  drawAll();
+}
+
+function drawLegend(svg, series, pos, W, H, margin, fontSize=14, manualX=NaN, manualY=NaN, selectedGroup='__all__'){
+  const plotW = W - margin.l - margin.r;
+  const plotH = H - margin.t - margin.b;
+  const lineH = fontSize * 1.85;
+  const maxLabelLen = Math.max(8, ...series.map((s,i) => seriesLegendLabel(s,i, selectedGroup).length));
+  const boxW = Math.max(150, Math.min(320, maxLabelLen * fontSize * 0.55 + 76));
+  const boxH = series.length * lineH;
+
+  const hasManual = pos === 'manual' || Number.isFinite(manualX) || Number.isFinite(manualY);
+  let x, y;
+
+  if(hasManual){
+    x = Number.isFinite(manualX) ? manualX : margin.l + plotW - boxW - 18;
+    y = Number.isFinite(manualY) ? manualY : margin.t + 22;
+  }else if(['right','right-top','right-bottom'].includes(pos)){
+    x = W - margin.r + 36;
+    if(pos === 'right-top') y = margin.t + 16;
+    else if(pos === 'right-bottom') y = H - margin.b - boxH + 10;
+    else y = margin.t + Math.max(16, (plotH - boxH) / 2 + 10);
+  }else if(['inside-top-right','inside-top-left','inside-bottom-right','inside-bottom-left'].includes(pos)){
+    if(pos.includes('right')) x = margin.l + plotW - boxW - 18;
+    else x = margin.l + 18;
+    if(pos.includes('bottom')) y = margin.t + plotH - boxH - 18;
+    else y = margin.t + 22;
+  }else{
+    const totalW = Math.min(plotW, series.reduce((sum,s,i)=>sum + Math.min(320, seriesLegendLabel(s,i, selectedGroup).length*fontSize*0.55 + 70), 0));
+    if(pos === 'bottom-left') x = margin.l;
+    else if(pos === 'bottom-right') x = W - margin.r - totalW;
+    else x = margin.l + Math.max(0, (plotW-totalW)/2);
+    y = H - margin.b + 66;
+  }
+
+  if(!hasManual && ['bottom','bottom-left','bottom-right'].includes(pos)){
+    let curX = x, curY = y;
+    series.forEach((s,i) => {
+      const color = s.color || defaultColors[i%defaultColors.length];
+      const label = seriesLegendLabel(s,i, selectedGroup);
+      const itemW = Math.min(320, label.length*fontSize*0.55 + 70);
+      if(curX + itemW > W - margin.r){
+        curX = margin.l;
+        curY += lineH;
+      }
+      addLine(svg, curX, curY, curX+24, curY, {stroke:color, width:2.5});
+      addMarker(svg, curX+12, curY, s.marker || 'circle', color, s.markerSize || 6);
+      addText(svg, curX+34, curY+fontSize/3, label, {size:fontSize, fill:'#334155', font:'Times New Roman, Times, serif'});
+      curX += itemW;
+    });
+    return;
+  }
+
+  let yy = y;
+  series.forEach((s,i) => {
+    const color = s.color || defaultColors[i%defaultColors.length];
+    const label = seriesLegendLabel(s,i, selectedGroup);
+    addLine(svg, x, yy, x+24, yy, {stroke:color, width:2.5});
+    addMarker(svg, x+12, yy, s.marker || 'circle', color, s.markerSize || 6);
+    addText(svg, x+34, yy+fontSize/3, label, {size:fontSize, fill:'#334155', font:'Times New Roman, Times, serif'});
+    yy += lineH;
+  });
+}
+function switchTab(name){
+  ['cal','data','plot'].forEach(t => {
+    document.getElementById('panel' + cap(t)).classList.toggle('hide', t !== name);
+    document.getElementById('tab' + cap(t)).classList.toggle('active', t === name);
+  });
+  drawAll();
+}
+
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+function parseOptionalNumber(id){
+  const s = val(id);
+  if(s === '' || s === null || s === undefined) return NaN;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function toggleSection(id){
+  const body = document.getElementById(id);
+  const btn = document.getElementById(id + 'Toggle');
+  if(!body) return;
+  body.classList.toggle('collapsed');
+  if(btn) btn.textContent = body.classList.contains('collapsed') ? '展開' : '收摺';
+}
+
+function handleTimeUnitChange(){
+  const p = activeProject();
+  const newUnit = val('timeUnit') || 'sec';
+  p.input.timeUnit = newUnit;
+
+  // If the current input table corresponds to an existing curve name, update that curve's time unit too.
+  const currentName = val('seriesName') || seriesLabelFromParams(p.input);
+  p.series.forEach(s => {
+    if(s.name === currentName) s.timeUnit = newUnit;
+  });
+
+  // Update default x-axis title when it still looks like the previous automatic time label.
+  const currentX = val('xLabel') || '';
+  if(/^Time\s*\((sec|min)\)$/i.test(currentX) || currentX.trim() === ''){
+    setVal('xLabel', `Time (${newUnit})`);
+    p.chart.xLabel = `Time (${newUnit})`;
+  }
+
+  saveState();
+  renderSeriesTable();
+  drawAll();
+}
+
+function setupTableKeyboardNavigation(){
+  document.addEventListener('keydown', function(e){
+    const target = e.target;
+    if(!target || !target.matches('[data-nav="1"]')) return;
+    const key = e.key;
+    if(!['Enter','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(key)) return;
+
+    const table = target.closest('table');
+    if(!table) return;
+
+    const cells = Array.from(table.querySelectorAll('[data-nav="1"]'));
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    const cell = target.closest('td');
+    const row = target.closest('tr');
+    if(!cell || !row) return;
+
+    const rowIndex = rows.indexOf(row);
+    const colIndex = Array.from(row.children).indexOf(cell);
+    let next = null;
+
+    if(key === 'Enter' || key === 'ArrowDown'){
+      next = findNavigableCell(rows[rowIndex + 1], colIndex);
+      if(!next && key === 'Enter') next = cells[cells.indexOf(target) + 1];
+    }else if(key === 'ArrowUp'){
+      next = findNavigableCell(rows[rowIndex - 1], colIndex);
+    }else if(key === 'ArrowRight'){
+      next = cells[cells.indexOf(target) + 1];
+    }else if(key === 'ArrowLeft'){
+      next = cells[cells.indexOf(target) - 1];
+    }
+
+    if(next){
+      e.preventDefault();
+      next.focus();
+      if(typeof next.select === 'function' && next.type !== 'color') next.select();
+    }
+  });
+}
+
+function findNavigableCell(row, colIndex){
+  if(!row) return null;
+  const cells = Array.from(row.children);
+  for(let offset=0; offset<cells.length; offset++){
+    const right = cells[colIndex + offset];
+    const left = cells[colIndex - offset];
+    const candidate = (right && right.querySelector('[data-nav="1"]')) || (left && left.querySelector('[data-nav="1"]'));
+    if(candidate) return candidate;
+  }
+  return null;
+}
+
+function exportJSON(){
+  saveState();
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  downloadBlob(blob, 'met_degradation_projects.json');
+}
+
+function importJSON(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const obj = JSON.parse(e.target.result);
+      let importedState;
+
+      if(obj.projects && Array.isArray(obj.projects)){
+        importedState = obj;
+      }else if(obj.name && obj.calibration){
+        importedState = {
+          activeId: obj.id || uid(),
+          projects: [obj]
+        };
+        importedState.projects[0].id = importedState.activeId;
+      }else{
+        alert('JSON 格式不符合：需要包含 projects 陣列，或是單一 project 物件。');
+        return;
+      }
+
+      if(!importedState.projects.length){
+        alert('JSON 中沒有專案資料。');
+        return;
+      }
+
+      importedState.projects.forEach(normalizeImportedProject);
+      if(!importedState.activeId || !importedState.projects.some(p => p.id === importedState.activeId)){
+        importedState.activeId = importedState.projects[0].id;
+      }
+
+      state = importedState;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      renderAll();
+      saveState();
+      alert('匯入完成。');
+    }catch(err){
+      console.error(err);
+      alert('匯入失敗：' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function normalizeImportedProject(p){
+  p.id ||= uid();
+  p.name ||= '未命名專案';
+  p.date ||= todayISO();
+  p.operator ||= '';
+  p.note ||= '';
+
+  p.calibration ||= {};
+  p.calibration.regressionMode ||= 'linear';
+  p.calibration.calTitle ||= 'Calibration curve';
+  p.calibration.calXLabel ||= 'Concentration';
+  p.calibration.calYLabel ||= 'Peak area';
+  p.calibration.points ||= [];
+
+  p.input ||= {};
+  p.input.metConc ??= '';
+  p.input.naoclConc ??= '';
+  p.input.uvIntensity ??= '';
+  p.input.phValue ??= '';
+  p.input.timeUnit ||= 'sec';
+  p.input.seriesName ??= '';
+  p.input.seriesGroup ??= '';
+  p.input.legendName ??= '';
+  p.input.shareEnabled ??= false;
+  p.input.shareGroups ??= [];
+  p.input.legendNameMET ??= '';
+  p.input.legendNameNaOCl ??= '';
+  p.input.legendNameUV ??= '';
+  p.input.legendNamepH ??= '';
+  p.input.markerSize = Number(p.input.markerSize) || 6.5;
+  p.input.editingSeriesId ??= '';
+  p.input.rows ||= [];
+
+  p.series ||= [];
+  p.series.forEach((s, i) => {
+    s.id ||= uid();
+    s.visible = s.visible !== false;
+    s.name ||= `Series ${i+1}`;
+    s.group = canonicalGroupName(s.group || '');
+    s.legendName ||= s.name;
+    s.legendNames ||= {};
+    s.legendNames.MET ??= '';
+    s.legendNames.NaOCl ??= '';
+    s.legendNames.UV ??= '';
+    s.legendNames.pH ??= '';
+
+    s.color ||= defaultColors[i % defaultColors.length];
+    s.marker ||= markerOptions[i % markerOptions.length];
+    s.markerSize = Number(s.markerSize) || 6.5;
+    s.rows ||= [];
+    s.timeUnit ||= p.input.timeUnit || 'sec';
+  });
+
+  p.chart ||= {};
+  p.chart.title ||= 'Metformin degradation curve';
+  p.chart.xLabel ||= `Time (${p.input.timeUnit || 'sec'})`;
+  p.chart.yLabel ||= 'Concentration';
+  p.chart.yMode ||= 'conc';
+  p.chart.lineMode ||= 'line-marker';
+  p.chart.activePlotGroup = p.chart.activePlotGroup === '__all__' ? '__all__' : canonicalGroupName(p.chart.activePlotGroup || '__all__');
+  p.chart.defaultSeriesGroup = canonicalGroupName(p.chart.defaultSeriesGroup || '');
+  p.chart.width = Number(p.chart.width) || 1240;
+  p.chart.height = Number(p.chart.height) || 760;
+  p.chart.legendPosition ||= 'manual';
+  p.chart.showLegend ??= true;
+  p.chart.legendX ??= '';
+  p.chart.legendY ??= '';
+  p.chart.digits = Number(p.chart.digits) || 3;
+  p.chart.showParamBox = p.chart.showParamBox !== false;
+  p.chart.paramText ??= '';
+  p.chart.titleFontSize = Number(p.chart.titleFontSize) || 26;
+  p.chart.axisFontSize = Number(p.chart.axisFontSize) || 18;
+  p.chart.tickFontSize = Number(p.chart.tickFontSize) || 14;
+  p.chart.legendFontSize = Number(p.chart.legendFontSize) || 14;
+  p.chart.paramFontSize = Number(p.chart.paramFontSize) || 13;
+  p.chart.gridLineWidth = Number(p.chart.gridLineWidth);
+  if(!Number.isFinite(p.chart.gridLineWidth)) p.chart.gridLineWidth = 1;
+  p.chart.xMinManual ??= '';
+  p.chart.xMaxManual ??= '';
+  p.chart.yMinManual ??= '';
+  p.chart.yMaxManual ??= '';
+  p.chart.xTickCount = Number(p.chart.xTickCount) || 6;
+  p.chart.yTickCount = Number(p.chart.yTickCount) || 6;
+  p.chart.showGrid = p.chart.showGrid !== false;
+  p.chart.showAxisBorder = p.chart.showAxisBorder !== false;
+  p.chart.titleGap = Number(p.chart.titleGap) || 18;
+  p.chart.paramX ??= '';
+  p.chart.paramY ??= '';
+}
+
+function exportCSV(type){
+  saveState();
+  const p = activeProject();
+  let rows = [];
+  if(type === 'calibration'){
+    rows.push(['project','date','concentration','area']);
+    p.calibration.points.forEach(r => rows.push([p.name,p.date,r.conc,r.area]));
+  }else{
+    rows.push(['project','date','group','series','legend_name','MET_uM','NaOCl_uM','UV_mW_cm2','pH','time_unit','time','area','calculated_concentration']);
+    p.series.forEach(s => {
+      s.rows.forEach(r => rows.push([p.name,p.date,s.group || '',s.name,s.legendName || s.name,s.metConc,s.naoclConc,s.uvIntensity,s.phValue,s.timeUnit,r.time,r.area,r.conc]));
+    });
+  }
+  const csv = rows.map(r => r.map(csvCell).join(',')).join('\n');
+  downloadBlob(new Blob(["\ufeff"+csv], {type:'text/csv;charset=utf-8'}), type === 'calibration' ? 'calibration.csv' : 'degradation_samples.csv');
+}
+
+function csvCell(v){
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+
+function downloadSVG(svgId, filename){
+  const svg = document.getElementById(svgId);
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const data = '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(clone);
+  downloadBlob(new Blob([data], {type:'image/svg+xml'}), filename);
+}
+
+function downloadPNG(svgId, filename){
+  const svg = document.getElementById(svgId);
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  const data = new XMLSerializer().serializeToString(clone);
+  const svgBlob = new Blob([data], {type:'image/svg+xml;charset=utf-8'});
+  const url = URL.createObjectURL(svgBlob);
+  const img = new Image();
+  const vb = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+  const W = vb[2], H = vb[3];
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = W * 2;
+    canvas.height = H * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(blob => downloadBlob(blob, filename), 'image/png');
+  };
+  img.src = url;
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+function safe(v){ return v ?? ''; }
+function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function fmt(n,d=3){
+  if(!Number.isFinite(Number(n))) return '—';
+  const num = Number(n);
+  if(Math.abs(num) >= 1000 || (Math.abs(num) < 0.001 && num !== 0)) return num.toExponential(Math.min(d,5));
+  return Number(num.toFixed(d)).toString();
+}
+function niceMax(x){
+  if(!Number.isFinite(x) || x <= 0) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(x)));
+  const n = x/pow;
+  const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+  return nice*pow;
+}
+function makeTicks(min,max,count){
+  if(min === max) return [min];
+  const raw = (max-min)/count;
+  const pow = Math.pow(10, Math.floor(Math.log10(Math.abs(raw))));
+  const n = raw/pow;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
+  const start = Math.ceil(min/step)*step;
+  const ticks = [];
+  for(let v=start; v<=max+step*0.5; v+=step) ticks.push(Number(v.toPrecision(12)));
+  if(!ticks.length) ticks.push(min,max);
+  return ticks;
+}
+
+function clearSvg(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+function nsEl(name){ return document.createElementNS('http://www.w3.org/2000/svg', name); }
+function addText(svg,x,y,text,opt={}){
+  const el=nsEl('text');
+  el.setAttribute('x',x); el.setAttribute('y',y);
+  el.textContent=text;
+  el.setAttribute('font-family', opt.font || 'Segoe UI, Noto Sans TC, Arial, sans-serif');
+  el.setAttribute('font-size',opt.size||13);
+  el.setAttribute('fill',opt.fill||'#111827');
+  if(opt.weight) el.setAttribute('font-weight',opt.weight);
+  if(opt.anchor) el.setAttribute('text-anchor',opt.anchor);
+  svg.appendChild(el);
+  return el;
+}
+function addRotatedText(svg,x,y,text,opt={}){
+  const el=addText(svg,x,y,text,opt);
+  el.setAttribute('transform',`rotate(-90 ${x} ${y})`);
+  return el;
+}
+function addLine(svg,x1,y1,x2,y2,opt={}){
+  const el=nsEl('line');
+  el.setAttribute('x1',x1); el.setAttribute('y1',y1); el.setAttribute('x2',x2); el.setAttribute('y2',y2);
+  el.setAttribute('stroke',opt.stroke||'#111827');
+  el.setAttribute('stroke-width',opt.width||1);
+  if(opt.dash) el.setAttribute('stroke-dasharray',opt.dash);
+  svg.appendChild(el);
+  return el;
+}
+function addPath(svg,d,opt={}){
+  const el=nsEl('path');
+  el.setAttribute('d',d);
+  el.setAttribute('fill',opt.fill||'none');
+  el.setAttribute('stroke',opt.stroke||'#111827');
+  el.setAttribute('stroke-width',opt.width||2);
+  el.setAttribute('stroke-linecap','round');
+  el.setAttribute('stroke-linejoin','round');
+  if(opt.dash) el.setAttribute('stroke-dasharray',opt.dash);
+  svg.appendChild(el);
+  return el;
+}
+function addRect(svg,x,y,w,h,opt={}){
+  const el=nsEl('rect');
+  el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('width',w); el.setAttribute('height',h);
+  el.setAttribute('fill',opt.fill||'none');
+  if(opt.stroke) el.setAttribute('stroke',opt.stroke);
+  if(opt.rx) el.setAttribute('rx',opt.rx);
+  svg.appendChild(el);
+  return el;
+}
+function addMarker(svg,x,y,type,color,size=6){
+  const g=nsEl('g');
+  g.setAttribute('transform',`translate(${x},${y})`);
+  let el;
+  if(type==='square'){
+    el=nsEl('rect'); el.setAttribute('x',-size); el.setAttribute('y',-size); el.setAttribute('width',size*2); el.setAttribute('height',size*2); el.setAttribute('rx',2);
+  }else if(type==='diamond'){
+    el=nsEl('path'); el.setAttribute('d',`M 0 ${-size*1.25} L ${size*1.25} 0 L 0 ${size*1.25} L ${-size*1.25} 0 Z`);
+  }else if(type==='triangle'){
+    el=nsEl('path'); el.setAttribute('d',`M 0 ${-size*1.35} L ${size*1.25} ${size} L ${-size*1.25} ${size} Z`);
+  }else if(type==='triangle-down'){
+    el=nsEl('path'); el.setAttribute('d',`M ${-size*1.25} ${-size} L ${size*1.25} ${-size} L 0 ${size*1.35} Z`);
+  }else if(type==='cross'){
+    el=nsEl('path'); el.setAttribute('d',`M ${-size} 0 L ${size} 0 M 0 ${-size} L 0 ${size}`);
+    el.setAttribute('stroke',color); el.setAttribute('stroke-width',2.4); el.setAttribute('stroke-linecap','round'); el.setAttribute('fill','none');
+    g.appendChild(el); svg.appendChild(g); return g;
+  }else{
+    el=nsEl('circle'); el.setAttribute('r',size);
+  }
+  el.setAttribute('fill',color);
+  el.setAttribute('stroke','#ffffff');
+  el.setAttribute('stroke-width',1.6);
+  g.appendChild(el);
+  svg.appendChild(g);
+  return g;
+}
+function emptySvgMessage(svg,W,H,msg){
+  addRect(svg,0,0,W,H,{fill:'#ffffff',stroke:'#e5e7eb'});
+  addText(svg,W/2,H/2,msg,{size:18,fill:'#64748b',anchor:'middle',weight:700});
+}
+
+
+function scrollToPanel(id){
+  const el = document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+loadState();
+renderAll();
+setupTableKeyboardNavigation();
+saveState();
+</script>
+</body>
+</html>
