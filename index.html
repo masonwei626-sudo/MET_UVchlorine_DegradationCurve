@@ -356,7 +356,7 @@
       background:#fff;
     }
     #seriesTable{
-      min-width:1120px;
+      min-width:1160px;
       border:0;
       border-radius:0;
     }
@@ -368,9 +368,9 @@
     #seriesTable th:nth-child(1){width:58px}
     #seriesTable th:nth-child(2){width:190px}
     #seriesTable th:nth-child(3){width:120px}
-    #seriesTable th:nth-child(4){width:180px}
-    #seriesTable th:nth-child(5){width:260px}
-    #seriesTable th:nth-child(6){width:90px}
+    #seriesTable th:nth-child(4){width:360px}
+    #seriesTable th:nth-child(5){width:90px}
+    #seriesTable th:nth-child(6){width:110px}
     #seriesTable th:nth-child(7){width:120px}
     #seriesTable th:nth-child(8){width:90px}
     #seriesTable th:nth-child(9){width:150px}
@@ -456,7 +456,7 @@
       background:#e5e7eb;
       color:#111827;
     }
-    #seriesTable{min-width:1120px;}
+    #seriesTable{min-width:1160px;}
     @media (max-width:1120px){.calibration-layout{grid-template-columns:1fr}}
     .series-action-buttons{
       display:flex;
@@ -627,6 +627,59 @@
       }
     }
 
+
+    .color-cell{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:88px;
+    }
+    .color-cell input[type="color"]{
+      width:34px;
+      min-width:34px;
+      height:28px;
+      padding:2px;
+      border-radius:8px;
+    }
+    .color-line-preview{
+      display:inline-block;
+      width:46px;
+      height:0;
+      border-top:6px solid currentColor;
+      border-radius:999px;
+    }
+    .plot-group-bar{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin:0 0 12px;
+      padding:12px;
+      border:1px solid #e5e7eb;
+      background:#f8fafc;
+      border-radius:14px;
+    }
+    .plot-group-bar .plot-group-select{
+      min-width:220px;
+      max-width:320px;
+      flex:1 1 220px;
+    }
+    .area-header-flex{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .area-clear-btn{
+      padding:4px 7px;
+      font-size:11px;
+      border-radius:8px;
+      background:#e5e7eb;
+      color:#111827;
+      box-shadow:none;
+    }
+
 </style>
 </head>
 <body>
@@ -696,10 +749,8 @@
               <button type="button" class="green" onclick="saveFormatPreset()">儲存目前格式為預設</button>
               <button type="button" class="secondary" onclick="applyFormatPresetToCurrentProject()">套用預設到目前專案</button>
               <button type="button" class="secondary" onclick="exportFormatPreset()">匯出格式預設</button>
-              <label class="button-like secondary" style="text-align:center;cursor:pointer">
-                匯入格式預設
-                <input type="file" accept=".json,application/json" style="display:none" onchange="importFormatPreset(event)" />
-              </label>
+              <button type="button" class="secondary" onclick="document.getElementById('formatPresetImport').click()">匯入格式預設</button>
+              <input id="formatPresetImport" type="file" accept=".json,application/json" style="display:none" onchange="importFormatPreset(event)" />
               <button type="button" class="danger" onclick="clearFormatPreset()">清除格式預設</button>
             </div>
             <div id="formatPresetStatus" class="preset-note">尚未儲存格式預設。</div>
@@ -739,12 +790,6 @@
                 <select id="activePlotGroup" onchange="handlePlotGroupSelect();">
                   <option value="__all__">全部曲線</option>
                 </select>
-              </div>
-              <div>
-                <label>說明</label>
-                <div class="status" style="margin-top:0">
-                  新增曲線的大組別請在「數據登錄」的曲線類型選擇。
-                </div>
               </div>
             </div>
             <div class="group-buttons">
@@ -1057,7 +1102,12 @@
             <thead>
               <tr>
                 <th>時間</th>
-                <th>LC 積分面積</th>
+                <th>
+                  <div class="area-header-flex">
+                    <span>LC 積分面積</span>
+                    <button type="button" class="area-clear-btn" onclick="clearSampleAreas()">清除</button>
+                  </div>
+                </th>
                 <th>換算濃度</th>
                 <th>備註</th>
                 <th>操作</th>
@@ -1075,7 +1125,7 @@
               <tr>
                 <th>顯示</th>
                 <th>名稱</th>
-                <th>大組別 / 共用</th>
+                <th>組別</th>
                 <th>參數</th>
                 <th>顏色</th>
                 <th>圖示</th>
@@ -1095,6 +1145,20 @@
             <button onclick="drawAll()">重新繪圖</button>
             <button class="green" onclick="downloadSVG('chartSvg','degradation_curve.svg')">下載 SVG</button>
             <button class="green" onclick="downloadPNG('chartSvg','degradation_curve.png')">下載 PNG</button>
+          </div>
+        </div>
+        <div class="plot-group-bar">
+          <div class="plot-group-select">
+            <label style="margin-top:0">繪圖組別</label>
+            <select id="plotGroupSelectTop" onchange="handlePlotGroupTopSelect();">
+              <option value="__all__">全部曲線</option>
+            </select>
+          </div>
+          <div class="group-buttons" style="margin-top:0;flex:2 1 360px">
+            <button type="button" class="group-btn plot-top-btn" data-group="MET" onclick="selectPlotGroup('MET')">MET</button>
+            <button type="button" class="group-btn plot-top-btn" data-group="NaOCl" onclick="selectPlotGroup('NaOCl')">NaOCl</button>
+            <button type="button" class="group-btn plot-top-btn" data-group="UV" onclick="selectPlotGroup('UV')">UV</button>
+            <button type="button" class="group-btn plot-top-btn" data-group="pH" onclick="selectPlotGroup('pH')">pH</button>
           </div>
         </div>
         <svg id="chartSvg" viewBox="0 0 1240 760" role="img" aria-label="Degradation curve"></svg>
@@ -1564,6 +1628,13 @@ function renderPlotGroupSelect(){
   const validValues = ['__all__', ...fixedGroups(), ...others];
   sel.value = validValues.includes(current) ? current : '__all__';
   p.chart.activePlotGroup = sel.value;
+
+  const topSel = document.getElementById('plotGroupSelectTop');
+  if(topSel){
+    topSel.innerHTML = sel.innerHTML;
+    topSel.value = sel.value;
+  }
+
   updateGroupButtons();
 }
 
@@ -1589,6 +1660,19 @@ function selectPlotGroup(group){
 function handlePlotGroupSelect(){
   const p = activeProject();
   p.chart.activePlotGroup = val('activePlotGroup');
+  updateGroupButtons();
+  saveState();
+  drawAll();
+}
+
+
+function handlePlotGroupTopSelect(){
+  const topSel = document.getElementById('plotGroupSelectTop');
+  if(!topSel) return;
+  const p = activeProject();
+  p.chart.activePlotGroup = topSel.value === '__all__' ? '__all__' : canonicalGroupName(topSel.value);
+  const sideSel = document.getElementById('activePlotGroup');
+  if(sideSel) sideSel.value = p.chart.activePlotGroup;
   updateGroupButtons();
   saveState();
   drawAll();
@@ -1945,6 +2029,16 @@ function sortSampleRowsAndRender(){
   saveState();
 }
 
+
+function clearSampleAreas(){
+  if(!confirm('確定清除目前表格中所有 LC 積分面積？時間與備註會保留。')) return;
+  const p = activeProject();
+  p.input.rows = readSampleInputTable().map(r => ({...r, area:''}));
+  renderSampleInputTable();
+  saveState();
+  drawAll();
+}
+
 function addSampleRow(){
   const p = activeProject();
   p.input.rows = readSampleInputTable();
@@ -2108,7 +2202,12 @@ function renderSeriesTable(){
         <span class="pill">UV ${safe(s.uvIntensity)}</span>
         <span class="pill">pH ${safe(s.phValue)}</span>
       </td>
-      <td><input data-nav="1" type="color" value="${s.color || defaultColors[i%defaultColors.length]}" oninput="activeProject().series[${i}].color=this.value; saveState(); drawAll();"></td>
+      <td>
+        <div class="color-cell">
+          <input data-nav="1" type="color" value="${s.color || defaultColors[i%defaultColors.length]}" oninput="activeProject().series[${i}].color=this.value; this.nextElementSibling.style.color=this.value; saveState(); drawAll();">
+          <span class="color-line-preview" style="color:${s.color || defaultColors[i%defaultColors.length]}"></span>
+        </div>
+      </td>
       <td>
         <select data-nav="1" onchange="activeProject().series[${i}].marker=this.value; saveState(); drawAll();">
           ${markerOptions.map(m => `<option value="${m}" ${s.marker===m?'selected':''}>${markerName(m)}</option>`).join('')}
@@ -2565,41 +2664,52 @@ function handleTimeUnitChange(){
 }
 
 function setupTableKeyboardNavigation(){
-  document.addEventListener('keydown', function(e){
-    const target = e.target;
-    if(!target || !target.matches('[data-nav="1"]')) return;
-    const key = e.key;
-    if(!['Enter','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(key)) return;
+  document.querySelectorAll('table.data-entry-table').forEach(table => {
+    if(table.dataset.keyboardReady === '1') return;
+    table.dataset.keyboardReady = '1';
+    table.addEventListener('keydown', event => {
+      const target = event.target;
+      if(!target || !target.matches('input, select, textarea')) return;
+      const keys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'];
+      if(!keys.includes(event.key)) return;
 
-    const table = target.closest('table');
-    if(!table) return;
+      if(target.tagName === 'TEXTAREA') return;
+      if(event.key === 'ArrowLeft' || event.key === 'ArrowRight'){
+        if(target.tagName === 'INPUT' && ['text','number','search',''].includes(target.type || '')){
+          const pos = target.selectionStart;
+          const len = target.value.length;
+          if(event.key === 'ArrowLeft' && pos !== 0) return;
+          if(event.key === 'ArrowRight' && pos !== len) return;
+        }
+      }
 
-    const cells = Array.from(table.querySelectorAll('[data-nav="1"]'));
-    const rows = Array.from(table.querySelectorAll('tbody tr'));
-    const cell = target.closest('td');
-    const row = target.closest('tr');
-    if(!cell || !row) return;
+      const currentCell = target.closest('td');
+      const currentRow = target.closest('tr');
+      if(!currentCell || !currentRow) return;
 
-    const rowIndex = rows.indexOf(row);
-    const colIndex = Array.from(row.children).indexOf(cell);
-    let next = null;
+      const rows = [...table.querySelectorAll('tbody tr')];
+      const rowIndex = rows.indexOf(currentRow);
+      const colIndex = [...currentRow.children].indexOf(currentCell);
+      if(rowIndex < 0 || colIndex < 0) return;
 
-    if(key === 'Enter' || key === 'ArrowDown'){
-      next = findNavigableCell(rows[rowIndex + 1], colIndex);
-      if(!next && key === 'Enter') next = cells[cells.indexOf(target) + 1];
-    }else if(key === 'ArrowUp'){
-      next = findNavigableCell(rows[rowIndex - 1], colIndex);
-    }else if(key === 'ArrowRight'){
-      next = cells[cells.indexOf(target) + 1];
-    }else if(key === 'ArrowLeft'){
-      next = cells[cells.indexOf(target) - 1];
-    }
+      let nextRow = rowIndex;
+      let nextCol = colIndex;
 
-    if(next){
-      e.preventDefault();
-      next.focus();
-      if(typeof next.select === 'function' && next.type !== 'color') next.select();
-    }
+      if(event.key === 'ArrowUp') nextRow--;
+      if(event.key === 'ArrowDown' || event.key === 'Enter') nextRow++;
+      if(event.key === 'ArrowLeft') nextCol--;
+      if(event.key === 'ArrowRight') nextCol++;
+
+      if(nextRow < 0 || nextRow >= rows.length || nextCol < 0 || nextCol >= rows[nextRow].children.length) return;
+
+      const nextCell = rows[nextRow].children[nextCol];
+      const nextInput = nextCell.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
+      if(!nextInput) return;
+
+      event.preventDefault();
+      nextInput.focus();
+      if(nextInput.select && nextInput.tagName === 'INPUT') nextInput.select();
+    });
   });
 }
 
