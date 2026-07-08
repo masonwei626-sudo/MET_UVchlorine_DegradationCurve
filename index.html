@@ -356,7 +356,7 @@
       background:#fff;
     }
     #seriesTable{
-      min-width:1160px;
+      min-width:1260px;
       border:0;
       border-radius:0;
     }
@@ -372,8 +372,8 @@
     #seriesTable th:nth-child(5){width:90px}
     #seriesTable th:nth-child(6){width:110px}
     #seriesTable th:nth-child(7){width:120px}
-    #seriesTable th:nth-child(8){width:90px}
-    #seriesTable th:nth-child(9){width:150px}
+    #seriesTable th:nth-child(8){width:110px}
+    #seriesTable th:nth-child(9){width:170px}
     #seriesTable .pill{
       margin-bottom:6px;
     }
@@ -456,7 +456,7 @@
       background:#e5e7eb;
       color:#111827;
     }
-    #seriesTable{min-width:1160px;}
+    #seriesTable{min-width:1260px;}
     @media (max-width:1120px){.calibration-layout{grid-template-columns:1fr}}
     .series-action-buttons{
       display:flex;
@@ -680,6 +680,34 @@
       box-shadow:none;
     }
 
+
+    .rate-result-box{
+      margin-top:10px;
+      padding:10px 12px;
+      border:1px solid #dbeafe;
+      border-radius:12px;
+      background:#eff6ff;
+      color:#1e3a8a;
+      font-size:13px;
+      line-height:1.55;
+      white-space:pre-wrap;
+    }
+    .errorbar-line{
+      stroke-linecap:round;
+    }
+
+
+    .legend-order-input{
+      width:74px;
+      min-width:74px;
+    }
+
+
+    .rep-conc-cell{
+      min-width:120px;
+      line-height:1.45;
+    }
+
 </style>
 </head>
 <body>
@@ -806,6 +834,7 @@
                   <option value="ratio">C/C0</option>
                   <option value="removal">去除率 (%)</option>
                   <option value="lnratio">ln(C/C0)</option>
+                  <option value="neglratio">-ln(C/C0)</option>
                 </select>
               </div>
               <div>
@@ -815,6 +844,25 @@
                   <option value="marker">只顯示點</option>
                   <option value="line">只顯示線</option>
                 </select>
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>
+                  <input id="mergeReplicates" type="checkbox" style="width:auto;margin-right:6px" onchange="saveState(); drawAll();" />
+                  合併相同條件多重複
+                </label>
+                <label>
+                  <input id="showErrorBars" type="checkbox" style="width:auto;margin-right:6px" onchange="saveState(); drawAll();" />
+                  顯示 error bar（平均 ± SD）
+                </label>
+              </div>
+              <div>
+                <label>
+                  <input id="showRateFit" type="checkbox" style="width:auto;margin-right:6px" onchange="saveState(); drawAll();" />
+                  顯示反應速率常數趨勢線
+                </label>
+                <div class="small-note">速率常數以 -ln(C/C0) 對時間做線性回歸。</div>
               </div>
             </div>
           </div>
@@ -829,6 +877,16 @@
               <div>
                 <label>Y 軸標題</label>
                 <input id="yLabel" value="Concentration (μM)" oninput="saveState(); drawAll();" />
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <label>X 軸標題與圖表距離</label>
+                <input id="xAxisLabelGap" type="number" min="20" max="160" step="1" value="58" oninput="saveState(); drawAll();" />
+              </div>
+              <div>
+                <label>Y 軸標題與圖表距離</label>
+                <input id="yAxisLabelGap" type="number" min="20" max="180" step="1" value="64" oninput="saveState(); drawAll();" />
               </div>
             </div>
           </div>
@@ -1069,10 +1127,14 @@
               </select>
             </div>
           </div>
-          <div class="row">
+          <div class="row3">
             <div>
               <label>此組名稱</label>
               <input id="seriesName" placeholder="例如 60MET-150NaOCl" onchange="saveState()" />
+            </div>
+            <div>
+              <label>重複數</label>
+              <input id="replicateCount" type="number" min="1" max="12" step="1" value="1" onchange="handleReplicateCountChange();" />
             </div>
             <div>
               <label>圖示大小</label>
@@ -1086,7 +1148,6 @@
               <div><label>UV 圖例</label><input id="legendNameUV" placeholder="UV 圖中顯示名稱" onchange="saveState()" /></div>
               <div><label>pH 圖例</label><input id="legendNamepH" placeholder="pH 圖中顯示名稱" onchange="saveState()" /></div>
             </div>
-            <div class="small-note">選 Share 時可填四組圖例名稱；選 MET、NaOCl、UV 或 pH 時，只保留該組圖例名稱，其它欄位會自動清空。</div>
           </div>
           <div class="actions">
             <button onclick="addSampleRow()">新增時間點</button>
@@ -1125,11 +1186,12 @@
               <tr>
                 <th>顯示</th>
                 <th>名稱</th>
-                <th>組別</th>
+                <th>大組別 / 共用</th>
                 <th>參數</th>
                 <th>顏色</th>
                 <th>圖示</th>
                 <th>大小</th>
+                <th>圖例順序</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -1163,6 +1225,7 @@
         </div>
         <svg id="chartSvg" viewBox="0 0 1240 760" role="img" aria-label="Degradation curve"></svg>
         <div id="plotMessage" class="small-note"></div>
+        <div id="rateResult" class="rate-result-box hide"></div>
       </section>
     </section>
   </main>
@@ -1213,6 +1276,7 @@ function newProject(name='新專案'){
       legendNameUV: '',
       legendNamepH: '',
       markerSize: 6.5,
+      replicateCount: 1,
       editingSeriesId: '',
       rows: [{time:0, area:'', note:''}]
     },
@@ -1221,8 +1285,13 @@ function newProject(name='新專案'){
       title: 'Metformin degradation curve',
       xLabel: 'Time (sec)',
       yLabel: 'Concentration (μM)',
+      xAxisLabelGap: 58,
+      yAxisLabelGap: 64,
       yMode: 'conc',
       lineMode: 'line-marker',
+      mergeReplicates: false,
+      showErrorBars: false,
+      showRateFit: false,
       activePlotGroup: '__all__',
       defaultSeriesGroup: '',
       width: 1240,
@@ -1412,8 +1481,13 @@ function ensureProjectShape(p){
   p.chart.title ??= 'Metformin degradation curve';
   p.chart.xLabel ??= 'Time (sec)';
   p.chart.yLabel ??= 'Concentration (μM)';
+  p.chart.xAxisLabelGap ??= 58;
+  p.chart.yAxisLabelGap ??= 64;
   p.chart.yMode ??= 'conc';
   p.chart.lineMode ??= 'line-marker';
+  p.chart.mergeReplicates ??= false;
+  p.chart.showErrorBars ??= false;
+  p.chart.showRateFit ??= false;
   p.chart.activePlotGroup ??= '__all__';
   p.chart.defaultSeriesGroup ??= '';
   p.input.seriesGroup ??= '';
@@ -1425,8 +1499,13 @@ function ensureProjectShape(p){
   p.input.legendNameUV ??= '';
   p.input.legendNamepH ??= '';
   p.input.markerSize ??= 6.5;
+  p.input.replicateCount ??= 1;
   p.input.editingSeriesId ??= '';
-  p.series.forEach(s => {
+  p.input.rows = (p.input.rows || []).map(r => {
+    const reps = Array.isArray(r.reps) ? r.reps : (Array.isArray(r.repAreas) ? r.repAreas : (r.area !== undefined && r.area !== '' ? [r.area] : []));
+    return {...r, reps, repAreas: reps};
+  });
+  p.series.forEach((s, i) => {
     s.group = canonicalGroupName(s.group || '');
     if(s.group === 'Share'){
       s.shareEnabled = true;
@@ -1442,7 +1521,13 @@ function ensureProjectShape(p){
     s.legendNames.UV ??= '';
     s.legendNames.pH ??= '';
     s.markerSize ??= 6.5;
-    if(s.rows) s.rows.sort((a,b)=>(Number(a.time)||0)-(Number(b.time)||0));
+    s.replicateCount ??= Math.max(1, ...((s.rows || []).map(r => (Array.isArray(r.reps) ? r.reps.length : (Array.isArray(r.repAreas) ? r.repAreas.length : (r.area !== undefined && r.area !== '' ? 1 : 0))))));
+    s.legendOrder ??= i + 1;
+    s.rows = (s.rows || []).map(r => {
+      const reps = Array.isArray(r.reps) ? r.reps : (Array.isArray(r.repAreas) ? r.repAreas : (r.area !== undefined && r.area !== '' ? [r.area] : []));
+      const repConcs = Array.isArray(r.repConcs) ? r.repConcs : (reps.length ? reps.map(a => Number.isFinite(Number(r.conc)) && reps.length === 1 ? Number(r.conc) : areaToConc(a)).filter(Number.isFinite) : []);
+      return {...r, reps, repAreas: reps, repConcs};
+    }).sort((a,b)=>(Number(a.time)||0)-(Number(b.time)||0));
   });
   p.chart.width ??= 1100;
   p.chart.height ??= 720;
@@ -1519,13 +1604,19 @@ function saveState(){
     pH: p.input.legendNamepH
   }[p.input.seriesGroup] || '');
   p.input.markerSize = Number(val('markerSize')) || 6.5;
+  p.input.replicateCount = Math.max(1, Math.min(12, Number(val('replicateCount')) || 1));
   p.input.rows = readSampleInputTable();
 
   p.chart.title = val('chartTitle');
   p.chart.xLabel = val('xLabel');
   p.chart.yLabel = val('yLabel');
+  p.chart.xAxisLabelGap = Number(val('xAxisLabelGap')) || 58;
+  p.chart.yAxisLabelGap = Number(val('yAxisLabelGap')) || 64;
   p.chart.yMode = val('yMode');
   p.chart.lineMode = val('lineMode');
+  p.chart.mergeReplicates = document.getElementById('mergeReplicates') ? document.getElementById('mergeReplicates').checked : false;
+  p.chart.showErrorBars = document.getElementById('showErrorBars') ? document.getElementById('showErrorBars').checked : false;
+  p.chart.showRateFit = document.getElementById('showRateFit') ? document.getElementById('showRateFit').checked : false;
   p.chart.activePlotGroup = val('activePlotGroup') === '__all__' ? '__all__' : canonicalGroupName(val('activePlotGroup'));
   p.chart.width = Number(val('chartW')) || 1100;
   p.chart.height = Number(val('chartH')) || 720;
@@ -1759,6 +1850,23 @@ function handleShareEnabledChange(){
   handleSeriesGroupChange();
 }
 
+
+function legendSortValue(s, fallbackIndex=0){
+  const n = Number(s && s.legendOrder);
+  return Number.isFinite(n) ? n : fallbackIndex + 1;
+}
+
+function sortSeriesByLegendOrder(series){
+  return [...series].sort((a,b) => {
+    const ai = activeProject().series.indexOf(a);
+    const bi = activeProject().series.indexOf(b);
+    const ao = legendSortValue(a, ai < 0 ? 0 : ai);
+    const bo = legendSortValue(b, bi < 0 ? 0 : bi);
+    if(ao !== bo) return ao - bo;
+    return (ai < 0 ? 0 : ai) - (bi < 0 ? 0 : bi);
+  });
+}
+
 function seriesInPlotGroup(s, selectedGroup){
   if(selectedGroup === '__all__') return true;
   const g = canonicalGroupName(s.group || '');
@@ -1795,14 +1903,20 @@ function renderAll(){
   syncLegendFieldsToCurveType(true);
   updateShareControlsEnabled();
   setVal('markerSize', p.input.markerSize || 6.5);
+  setVal('replicateCount', p.input.replicateCount || 1);
   renderSampleInputTable();
   renderSeriesTable();
 
   setVal('chartTitle', p.chart.title);
   setVal('xLabel', p.chart.xLabel);
   setVal('yLabel', p.chart.yLabel);
+  setVal('xAxisLabelGap', p.chart.xAxisLabelGap ?? 58);
+  setVal('yAxisLabelGap', p.chart.yAxisLabelGap ?? 64);
   setVal('yMode', p.chart.yMode);
   setVal('lineMode', p.chart.lineMode);
+  if(document.getElementById('mergeReplicates')) document.getElementById('mergeReplicates').checked = !!p.chart.mergeReplicates;
+  if(document.getElementById('showErrorBars')) document.getElementById('showErrorBars').checked = !!p.chart.showErrorBars;
+  if(document.getElementById('showRateFit')) document.getElementById('showRateFit').checked = !!p.chart.showRateFit;
   renderPlotGroupSelect();
   setVal('activePlotGroup', p.chart.activePlotGroup || '__all__');
   setVal('chartW', p.chart.width);
@@ -1980,32 +2094,94 @@ function areaToConc(area){
   return (y - reg.b) / reg.a;
 }
 
+function currentReplicateCount(){
+  const p = activeProject();
+  const el = document.getElementById('replicateCount');
+  const n = el ? Number(el.value) : Number(p.input.replicateCount);
+  return Math.max(1, Math.min(12, Number.isFinite(n) ? Math.round(n) : 1));
+}
+
+function normalizeRepAreas(row, n=currentReplicateCount()){
+  const src = Array.isArray(row?.reps) ? row.reps : (Array.isArray(row?.repAreas) ? row.repAreas : (row?.area !== undefined && row?.area !== '' ? [row.area] : []));
+  const arr = [];
+  for(let i=0;i<n;i++){
+    const v = src[i];
+    arr.push(v === '' || v === null || v === undefined ? '' : Number(v));
+  }
+  return arr;
+}
+
+function replicateStatsFromAreas(areas){
+  const concs = (areas || []).map(a => areaToConc(a)).filter(Number.isFinite);
+  if(!concs.length) return {mean:NaN, sd:NaN, n:0, concs:[]};
+  const m = mean(concs);
+  const s = sd(concs);
+  return {mean:m, sd:s, n:concs.length, concs};
+}
+
+function renderSampleHeader(){
+  const table = document.getElementById('sampleInputTable');
+  const thead = table.querySelector('thead');
+  const n = currentReplicateCount();
+  const areaHeads = Array.from({length:n}, (_,i) => {
+    const label = n === 1 ? 'LC 積分面積' : `LC 積分面積 Rep ${i+1}`;
+    const button = i === 0 ? `<button type="button" class="area-clear-btn" onclick="clearSampleAreas()">清除</button>` : '';
+    return `<th><div class="area-header-flex"><span>${label}</span>${button}</div></th>`;
+  }).join('');
+  thead.innerHTML = `<tr>
+    <th>時間</th>
+    ${areaHeads}
+    <th>平均濃度 ± SD</th>
+    <th>操作</th>
+  </tr>`;
+}
+
 function renderSampleInputTable(){
   const p = activeProject();
   const tb = document.querySelector('#sampleInputTable tbody');
+  const n = currentReplicateCount();
+  p.input.replicateCount = n;
+  renderSampleHeader();
   tb.innerHTML = '';
   p.input.rows.forEach((row, i) => {
-    const conc = areaToConc(row.area);
+    const reps = normalizeRepAreas(row, n);
+    const stats = replicateStatsFromAreas(reps);
+    const repInputs = reps.map((v, j) => `<td><input data-nav="1" type="number" step="any" value="${safe(v)}" oninput="refreshSampleConcentrations(); saveState();" onchange="sortSampleRowsAndRender();"></td>`).join('');
+    const concText = Number.isFinite(stats.mean)
+      ? `${fmt(stats.mean,4)}${Number.isFinite(stats.sd) ? ' ± ' + fmt(stats.sd,4) : ''}<br><span class="small-note">n=${stats.n}</span>`
+      : '—';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input data-nav="1" type="number" step="any" value="${safe(row.time)}" oninput="refreshSampleConcentrations(); saveState();" onchange="sortSampleRowsAndRender();"></td>
-      <td><input data-nav="1" type="number" step="any" value="${safe(row.area)}" oninput="refreshSampleConcentrations(); saveState();" onchange="sortSampleRowsAndRender();"></td>
-      <td class="mono conc-cell">${Number.isFinite(conc) ? fmt(conc,4) : '—'}</td>
-      <td><input data-nav="1" value="${escapeAttr(row.note || '')}" oninput="saveState();"></td>
+      ${repInputs}
+      <td class="mono conc-cell rep-conc-cell">${concText}</td>
       <td><button class="mini danger" onclick="removeSampleRow(${i})">刪除</button></td>`;
     tb.appendChild(tr);
   });
 }
 
 function readSampleInputTable(){
+  const n = currentReplicateCount();
   return [...document.querySelectorAll('#sampleInputTable tbody tr')].map(tr => {
     const inputs = tr.querySelectorAll('input');
+    const reps = [];
+    for(let i=0;i<n;i++){
+      const raw = inputs[1+i]?.value;
+      reps.push(raw === '' || raw === undefined ? '' : Number(raw));
+    }
+    const stats = replicateStatsFromAreas(reps);
     return {
       time: Number(inputs[0].value),
-      area: inputs[1].value === '' ? '' : Number(inputs[1].value),
-      note: inputs[2].value || ''
+      area: reps[0] === undefined ? '' : reps[0],
+      reps,
+      repAreas: reps,
+      conc: stats.mean,
+      sd: stats.sd,
+      n: stats.n,
+      repConcs: stats.concs,
+      note: ''
     };
-  }).filter(r => Number.isFinite(r.time) || r.area !== '' || r.note)
+  }).filter(r => Number.isFinite(r.time) || (r.reps || []).some(v => v !== '' && Number.isFinite(Number(v))))
     .sort((a,b)=>{
       const at = Number.isFinite(a.time) ? a.time : Number.POSITIVE_INFINITY;
       const bt = Number.isFinite(b.time) ? b.time : Number.POSITIVE_INFINITY;
@@ -2014,13 +2190,32 @@ function readSampleInputTable(){
 }
 
 function refreshSampleConcentrations(){
+  const n = currentReplicateCount();
   [...document.querySelectorAll('#sampleInputTable tbody tr')].forEach(tr => {
     const inputs = tr.querySelectorAll('input');
-    const c = areaToConc(inputs[1].value);
-    tr.querySelector('.conc-cell').textContent = Number.isFinite(c) ? fmt(c,4) : '—';
+    const reps = [];
+    for(let i=0;i<n;i++){
+      const raw = inputs[1+i]?.value;
+      reps.push(raw === '' || raw === undefined ? '' : Number(raw));
+    }
+    const stats = replicateStatsFromAreas(reps);
+    const cell = tr.querySelector('.conc-cell');
+    if(cell){
+      cell.innerHTML = Number.isFinite(stats.mean)
+        ? `${fmt(stats.mean,4)}${Number.isFinite(stats.sd) ? ' ± ' + fmt(stats.sd,4) : ''}<br><span class="small-note">n=${stats.n}</span>`
+        : '—';
+    }
   });
 }
 
+function handleReplicateCountChange(){
+  const p = activeProject();
+  p.input.rows = readSampleInputTable();
+  p.input.replicateCount = currentReplicateCount();
+  renderSampleInputTable();
+  saveState();
+  drawAll();
+}
 
 function sortSampleRowsAndRender(){
   const p = activeProject();
@@ -2029,11 +2224,11 @@ function sortSampleRowsAndRender(){
   saveState();
 }
 
-
 function clearSampleAreas(){
-  if(!confirm('確定清除目前表格中所有 LC 積分面積？時間與備註會保留。')) return;
+  if(!confirm('確定清除目前表格中所有 LC 積分面積？時間會保留。')) return;
   const p = activeProject();
-  p.input.rows = readSampleInputTable().map(r => ({...r, area:''}));
+  const n = currentReplicateCount();
+  p.input.rows = readSampleInputTable().map(r => ({...r, area:'', reps:Array.from({length:n},()=>''), repAreas:Array.from({length:n},()=>''), conc:NaN, sd:NaN, n:0, repConcs:[], note:''}));
   renderSampleInputTable();
   saveState();
   drawAll();
@@ -2041,8 +2236,9 @@ function clearSampleAreas(){
 
 function addSampleRow(){
   const p = activeProject();
+  const n = currentReplicateCount();
   p.input.rows = readSampleInputTable();
-  p.input.rows.push({time:'', area:'', note:''});
+  p.input.rows.push({time:'', area:'', reps:Array.from({length:n},()=>''), note:''});
   renderSampleInputTable();
   saveState();
 }
@@ -2075,12 +2271,21 @@ function seriesLabelFromParams(input){
 function addSeriesFromCurrentForm(mode='add'){
   saveState();
   const p = activeProject();
-  const rows = readSampleInputTable().map(r => ({
-    time: Number(r.time),
-    area: Number(r.area),
-    conc: areaToConc(r.area),
-    note: r.note || ''
-  })).filter(r => Number.isFinite(r.time) && Number.isFinite(r.area) && Number.isFinite(r.conc));
+  const rows = readSampleInputTable().map(r => {
+    const reps = normalizeRepAreas(r, currentReplicateCount());
+    const stats = replicateStatsFromAreas(reps);
+    return {
+      time: Number(r.time),
+      area: reps[0] === undefined ? '' : reps[0],
+      reps,
+      repAreas: reps,
+      conc: stats.mean,
+      sd: stats.sd,
+      n: stats.n,
+      repConcs: stats.concs,
+      note: r.note || ''
+    };
+  }).filter(r => Number.isFinite(r.time) && Number.isFinite(r.conc));
 
   if(rows.length < 1){
     alert('請至少輸入一筆有效時間與積分面積資料。');
@@ -2125,6 +2330,7 @@ function addSeriesFromCurrentForm(mode='add'){
     color: oldSeries ? oldSeries.color : defaultColors[p.series.length % defaultColors.length],
     marker: oldSeries ? oldSeries.marker : markerOptions[p.series.length % markerOptions.length],
     markerSize: Number(p.input.markerSize) || (oldSeries ? oldSeries.markerSize : 6.5),
+    replicateCount: currentReplicateCount(),
     group: currentAutoSeriesGroup(),
     legendName: p.input.shareEnabled ? name : (p.input.legendName || name),
     shareEnabled: !!p.input.shareEnabled,
@@ -2214,9 +2420,11 @@ function renderSeriesTable(){
         </select>
       </td>
       <td><input data-nav="1" type="number" min="2" max="30" step="0.5" value="${safe(s.markerSize || 6.5)}" oninput="activeProject().series[${i}].markerSize=Number(this.value)||6.5; saveState(); drawAll();"></td>
+      <td><input data-nav="1" class="legend-order-input" type="number" min="1" step="1" value="${safe(s.legendOrder || i+1)}" oninput="activeProject().series[${i}].legendOrder=Number(this.value)||(${i}+1); saveState(); drawAll();"></td>
       <td>
         <div class="series-action-buttons">
           <button class="mini secondary" onclick="loadSeriesToForm(${i})">編輯</button>
+          <button class="mini secondary" onclick="copySeriesToProject(${i})">複製到專案</button>
           <button class="mini danger" onclick="deleteSeries(${i})">刪除</button>
         </div>
       </td>`;
@@ -2274,10 +2482,43 @@ function loadSeriesToForm(i){
   p.input.legendNameUV = (s.legendNames && s.legendNames.UV) || '';
   p.input.legendNamepH = (s.legendNames && s.legendNames.pH) || '';
   p.input.markerSize = s.markerSize || 6.5;
+  p.input.replicateCount = s.replicateCount || Math.max(1, ...((s.rows || []).map(r => (r.reps || r.repAreas || []).length || 1)));
   p.input.editingSeriesId = s.id;
-  p.input.rows = s.rows.map(r => ({time:r.time, area:r.area, note:r.note || ''}));
+  p.input.rows = s.rows.map(r => ({time:r.time, area:r.area, reps:r.reps || r.repAreas || (r.area !== undefined ? [r.area] : []), note:r.note || ''}));
   renderAll();
   switchTab('data');
+}
+
+
+function copySeriesToProject(i){
+  const p = activeProject();
+  const s = p.series[i];
+  if(!s) return;
+
+  const targets = state.projects.filter(x => x.id !== p.id);
+  if(!targets.length){
+    alert('目前沒有其它專案可複製。請先新增專案。');
+    return;
+  }
+
+  const list = targets.map((proj, idx) => `${idx+1}. ${proj.name || '未命名專案'}`).join('\n');
+  const ans = prompt(`請輸入要複製到哪個專案的編號：\n${list}`, '1');
+  if(ans === null) return;
+  const idx = Number(ans) - 1;
+  if(!Number.isInteger(idx) || idx < 0 || idx >= targets.length){
+    alert('輸入的專案編號無效。');
+    return;
+  }
+
+  const target = targets[idx];
+  ensureProjectShape(target);
+  const copied = JSON.parse(JSON.stringify(s));
+  copied.id = uid();
+  copied.name = copied.name + ' - 複製';
+  target.series.push(copied);
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  alert(`已複製「${s.name}」到「${target.name}」。`);
 }
 
 function deleteSeries(i){
@@ -2313,13 +2554,36 @@ function loadDemoSamples(){
 }
 
 function transformY(rows, mode){
-  const c0row = rows.find(r => Number.isFinite(r.conc));
+  const sorted = [...rows].sort((a,b)=>a.time-b.time);
+  const c0row = sorted.find(r => Number.isFinite(r.conc));
   const c0 = c0row ? c0row.conc : NaN;
-  return rows.map(r => {
-    let y = r.conc;
-    if(mode === 'ratio') y = Number.isFinite(c0) && c0 !== 0 ? r.conc/c0 : NaN;
-    if(mode === 'removal') y = Number.isFinite(c0) && c0 !== 0 ? (1-r.conc/c0)*100 : NaN;
-    if(mode === 'lnratio') y = Number.isFinite(c0) && c0 !== 0 && r.conc > 0 ? Math.log(r.conc/c0) : NaN;
+
+  const maxRepLen = Math.max(0, ...sorted.map(r => Array.isArray(r.repConcs) ? r.repConcs.length : 0));
+  const repC0 = [];
+  for(let i=0;i<maxRepLen;i++){
+    const first = sorted.find(r => Array.isArray(r.repConcs) && Number.isFinite(r.repConcs[i]) && r.repConcs[i] > 0);
+    repC0[i] = first ? first.repConcs[i] : NaN;
+  }
+
+  function transformConc(c, base){
+    if(!Number.isFinite(c)) return NaN;
+    if(mode === 'conc') return c;
+    if(mode === 'ratio') return Number.isFinite(base) && base !== 0 ? c/base : NaN;
+    if(mode === 'removal') return Number.isFinite(base) && base !== 0 ? (1-c/base)*100 : NaN;
+    if(mode === 'lnratio') return Number.isFinite(base) && base !== 0 && c > 0 ? Math.log(c/base) : NaN;
+    if(mode === 'neglratio') return Number.isFinite(base) && base !== 0 && c > 0 ? -Math.log(c/base) : NaN;
+    return c;
+  }
+
+  return sorted.map(r => {
+    const reps = Array.isArray(r.repConcs) && r.repConcs.length ? r.repConcs : [];
+    if(reps.length){
+      const ys = reps.map((c,i) => transformConc(c, mode === 'conc' ? c0 : repC0[i])).filter(Number.isFinite);
+      const y = ys.length ? mean(ys) : transformConc(r.conc, c0);
+      const ysd = ys.length > 1 ? sd(ys) : NaN;
+      return {...r, y, sd:ysd, n:ys.length, repY:ys};
+    }
+    const y = transformConc(r.conc, c0);
     return {...r, y};
   }).filter(r => Number.isFinite(r.time) && Number.isFinite(r.y));
 }
@@ -2367,6 +2631,156 @@ function drawCalibration(){
   reg.points.forEach(d => addMarker(svg, sx(d.conc), sy(d.area), 'circle', '#2563eb', 6));
 }
 
+
+function replicateKey(s, selectedGroup){
+  const g = selectedGroup && selectedGroup !== '__all__' ? selectedGroup : (s.shareEnabled ? 'Share' : canonicalGroupName(s.group || ''));
+  return [
+    g,
+    s.metConc ?? '',
+    s.naoclConc ?? '',
+    s.uvIntensity ?? '',
+    s.phValue ?? '',
+    s.timeUnit ?? '',
+    seriesLegendLabel(s, 0, selectedGroup)
+  ].join('|');
+}
+
+function mean(values){
+  const v = values.filter(Number.isFinite);
+  return v.length ? v.reduce((a,b)=>a+b,0)/v.length : NaN;
+}
+
+function sd(values){
+  const v = values.filter(Number.isFinite);
+  if(v.length < 2) return NaN;
+  const m = mean(v);
+  return Math.sqrt(v.reduce((s,x)=>s+(x-m)**2,0)/(v.length-1));
+}
+
+function aggregateReplicates(seriesData, selectedGroup){
+  const groups = new Map();
+  seriesData.forEach(pack => {
+    const key = replicateKey(pack.series, selectedGroup);
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(pack);
+  });
+
+  const out = [];
+  groups.forEach((packs, key) => {
+    if(packs.length === 1){
+      out.push({...packs[0], replicateCount: 1});
+      return;
+    }
+    const base = JSON.parse(JSON.stringify(packs[0].series));
+    base.name = seriesLegendLabel(packs[0].series, 0, selectedGroup);
+    base.legendName = base.name + ` (n=${packs.length})`;
+
+    const byTime = new Map();
+    packs.forEach(pack => {
+      pack.rows.forEach(r => {
+        const t = Number(r.time);
+        if(!Number.isFinite(t)) return;
+        if(!byTime.has(t)) byTime.set(t, []);
+        byTime.get(t).push(r.y);
+      });
+    });
+
+    const rows = [...byTime.entries()].sort((a,b)=>a[0]-b[0]).map(([time, values]) => {
+      const m = mean(values);
+      const sdev = sd(values);
+      return {time, y:m, sd:sdev, n:values.length};
+    }).filter(r => Number.isFinite(r.y));
+
+    out.push({series:base, rows, replicateCount:packs.length, aggregated:true});
+  });
+
+  return out;
+}
+
+function linearRegressionXY(points){
+  const pts = points.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+  if(pts.length < 2) return null;
+  const n = pts.length;
+  const sx = pts.reduce((s,p)=>s+p.x,0);
+  const sy = pts.reduce((s,p)=>s+p.y,0);
+  const sxx = pts.reduce((s,p)=>s+p.x*p.x,0);
+  const sxy = pts.reduce((s,p)=>s+p.x*p.y,0);
+  const denom = n*sxx - sx*sx;
+  if(Math.abs(denom) < 1e-12) return null;
+  const slope = (n*sxy - sx*sy)/denom;
+  const intercept = (sy - slope*sx)/n;
+  const ymean = sy/n;
+  const ssTot = pts.reduce((s,p)=>s+(p.y-ymean)**2,0);
+  const ssRes = pts.reduce((s,p)=>s+(p.y-(slope*p.x+intercept))**2,0);
+  const r2 = ssTot === 0 ? 1 : 1 - ssRes/ssTot;
+  return {slope, intercept, r2, n};
+}
+
+function rateRowsFromSeriesRows(rows){
+  const sorted = [...rows].sort((a,b)=>a.time-b.time);
+  const first = sorted.find(r => Number.isFinite(r.conc) && r.conc > 0);
+  const c0 = first ? first.conc : NaN;
+  if(!Number.isFinite(c0) || c0 === 0) return [];
+  return sorted.map(r => ({
+    x: Number(r.time),
+    y: Number.isFinite(r.conc) && r.conc > 0 ? -Math.log(r.conc/c0) : NaN
+  })).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+}
+
+function rateReplicateFitsFromSeriesRows(rows){
+  const sorted = [...rows].sort((a,b)=>a.time-b.time);
+  const maxRepLen = Math.max(0, ...sorted.map(r => Array.isArray(r.repConcs) ? r.repConcs.length : 0));
+  const fits = [];
+  for(let i=0;i<maxRepLen;i++){
+    const first = sorted.find(r => Array.isArray(r.repConcs) && Number.isFinite(r.repConcs[i]) && r.repConcs[i] > 0);
+    const c0 = first ? first.repConcs[i] : NaN;
+    if(!Number.isFinite(c0) || c0 === 0) continue;
+    const pts = sorted.map(r => {
+      const c = Array.isArray(r.repConcs) ? r.repConcs[i] : NaN;
+      return {
+        x: Number(r.time),
+        y: Number.isFinite(c) && c > 0 ? -Math.log(c/c0) : NaN
+      };
+    }).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+    const fit = linearRegressionXY(pts);
+    if(fit) fits.push({...fit, repIndex:i+1});
+  }
+  return fits;
+}
+
+function summarizeReplicateRateFits(rows){
+  const fits = rateReplicateFitsFromSeriesRows(rows);
+  if(!fits.length) return null;
+  const ks = fits.map(f => f.slope).filter(Number.isFinite);
+  const r2s = fits.map(f => f.r2).filter(Number.isFinite);
+  return {
+    fits,
+    kMean: mean(ks),
+    kSd: sd(ks),
+    r2Mean: mean(r2s),
+    nRep: fits.length
+  };
+}
+
+function rateRowsFromPlotRows(rows, yMode){
+  if(yMode === 'neglratio'){
+    return rows.map(r => ({x:Number(r.time), y:Number(r.y)})).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+  }
+  return [];
+}
+
+function drawErrorBars(svg, rows, sx, sy, color){
+  rows.forEach(r => {
+    if(!Number.isFinite(r.sd) || r.n < 2) return;
+    const x = sx(r.time);
+    const yTop = sy(r.y + r.sd);
+    const yBot = sy(r.y - r.sd);
+    addLine(svg, x, yTop, x, yBot, {stroke:color, width:1.6});
+    addLine(svg, x-6, yTop, x+6, yTop, {stroke:color, width:1.6});
+    addLine(svg, x-6, yBot, x+6, yBot, {stroke:color, width:1.6});
+  });
+}
+
 function drawChart(){
   const p = activeProject();
   const svg = document.getElementById('chartSvg');
@@ -2376,10 +2790,10 @@ function drawChart(){
   clearSvg(svg);
 
   const selectedGroup = val('activePlotGroup') === '__all__' ? '__all__' : canonicalGroupName(val('activePlotGroup') || '__all__');
-  const visible = p.series.filter(s => {
+  const visible = sortSeriesByLegendOrder(p.series.filter(s => {
     if(s.visible === false) return false;
     return seriesInPlotGroup(s, selectedGroup);
-  });
+  }));
   if(!visible.length){
     emptySvgMessage(svg, W, H, selectedGroup === '__all__' ? '尚未建立曲線：請先到「數據登錄」新增/更新為一組曲線' : '此大組別目前沒有可繪製的曲線');
     document.getElementById('plotMessage').textContent = '目前沒有可繪製的曲線。';
@@ -2388,11 +2802,34 @@ function drawChart(){
 
   const yMode = val('yMode');
   const all = [];
-  const seriesData = visible.map(s => {
+  let seriesData = visible.map(s => {
     const rows = transformY(s.rows, yMode);
     rows.forEach(r => all.push(r));
     return {series:s, rows};
   }).filter(x => x.rows.length);
+
+  const mergeReplicates = document.getElementById('mergeReplicates') ? document.getElementById('mergeReplicates').checked : false;
+  const showErrorBars = document.getElementById('showErrorBars') ? document.getElementById('showErrorBars').checked : false;
+  const showRateFit = document.getElementById('showRateFit') ? document.getElementById('showRateFit').checked : false;
+
+  if(mergeReplicates){
+    seriesData = aggregateReplicates(seriesData, selectedGroup);
+    all.length = 0;
+    seriesData.forEach(pack => pack.rows.forEach(r => {
+      all.push(r);
+      if(showErrorBars && Number.isFinite(r.sd)){
+        all.push({...r, y:r.y + r.sd});
+        all.push({...r, y:r.y - r.sd});
+      }
+    }));
+  }else if(showErrorBars){
+    seriesData.forEach(pack => pack.rows.forEach(r => {
+      if(Number.isFinite(r.sd)){
+        all.push({...r, y:r.y + r.sd});
+        all.push({...r, y:r.y - r.sd});
+      }
+    }));
+  }
 
   if(!all.length){
     emptySvgMessage(svg, W, H, '曲線資料不足或無法換算');
@@ -2406,11 +2843,14 @@ function drawChart(){
   const hasManualLegend = legendPosition === 'manual' || Number.isFinite(manualLegendX) || Number.isFinite(manualLegendY);
   const isRightLegend = !hasManualLegend && ['right','right-top','right-bottom'].includes(legendPosition);
   const isBottomLegend = !hasManualLegend && ['bottom','bottom-left','bottom-right'].includes(legendPosition);
+  const axisFontSizeForMargin = Number(val('axisFontSize')) || 18;
+  const xAxisLabelGap = Math.max(20, Number(val('xAxisLabelGap')) || p.chart.xAxisLabelGap || 58);
+  const yAxisLabelGap = Math.max(20, Number(val('yAxisLabelGap')) || p.chart.yAxisLabelGap || 64);
   const margin = {
-    l: 96,
+    l: Math.max(96, yAxisLabelGap + axisFontSizeForMargin + 18),
     r: isRightLegend ? 280 : 56,
     t: 98,
-    b: isBottomLegend ? 145 : 88
+    b: Math.max(isBottomLegend ? 145 : 88, xAxisLabelGap + axisFontSizeForMargin + 22)
   };
   const minX = Math.min(...all.map(d=>d.time));
   const maxX0 = Math.max(...all.map(d=>d.time));
@@ -2458,20 +2898,40 @@ function drawChart(){
 
   drawGrid(svg, W, H, margin, xMax, yMax, sx, sy, xMin, yMin, tickFontSize, true, xTickCount, yTickCount, showGrid, showAxisBorder, gridLineWidth);
   addText(svg, W/2, Math.max(titleFontSize + 4, margin.t - titleGap), val('chartTitle') || 'Degradation curve', {size:titleFontSize, weight:700, anchor:'middle', font:'Times New Roman, Times, serif'});
-  addText(svg, W/2, H-30, val('xLabel') || `Time (${p.input.timeUnit || 'sec'})`, {size:axisFontSize, weight:700, anchor:'middle', font:'Times New Roman, Times, serif'});
-  addRotatedText(svg, 32, margin.t + plotH/2, val('yLabel') || autoYLabel(yMode), {size:axisFontSize, weight:700, anchor:'middle', font:'Times New Roman, Times, serif'});
+  addText(svg, W/2, H-margin.b + xAxisLabelGap, val('xLabel') || `Time (${p.input.timeUnit || 'sec'})`, {size:axisFontSize, weight:700, anchor:'middle', font:'Times New Roman, Times, serif'});
+  addRotatedText(svg, margin.l - yAxisLabelGap, margin.t + plotH/2, val('yLabel') || autoYLabel(yMode), {size:axisFontSize, weight:700, anchor:'middle', font:'Times New Roman, Times, serif'});
 
   const lineMode = val('lineMode');
+  const rateLines = [];
   seriesData.forEach((pack, i) => {
     const s = pack.series;
     const rows = pack.rows.sort((a,b)=>a.time-b.time);
     const color = s.color || defaultColors[i % defaultColors.length];
+
+    if(showErrorBars){
+      drawErrorBars(svg, rows, sx, sy, color);
+    }
+
     if(lineMode !== 'marker'){
       const path = rows.map((r,j)=>`${j?'L':'M'} ${sx(r.time)} ${sy(r.y)}`).join(' ');
       addPath(svg, path, {stroke:color, width:3, fill:'none'});
     }
     if(lineMode !== 'line'){
       rows.forEach(r => addMarker(svg, sx(r.time), sy(r.y), s.marker || 'circle', color, s.markerSize || 6.5));
+    }
+
+    const ratePts = yMode === 'neglratio' ? rateRowsFromPlotRows(rows, yMode) : rateRowsFromSeriesRows(s.rows || []);
+    const fit = linearRegressionXY(ratePts);
+    const repRateSummary = summarizeReplicateRateFits(s.rows || []);
+    if(fit || repRateSummary){
+      rateLines.push({series:s, fit, repRateSummary, color, rows, label:seriesLegendLabel(s, i, selectedGroup)});
+      if(showRateFit && yMode === 'neglratio' && fit){
+        const x1 = Math.max(xMin, Math.min(...ratePts.map(p=>p.x)));
+        const x2 = Math.min(xMax, Math.max(...ratePts.map(p=>p.x)));
+        const y1 = fit.slope*x1 + fit.intercept;
+        const y2 = fit.slope*x2 + fit.intercept;
+        addPath(svg, `M ${sx(x1)} ${sy(y1)} L ${sx(x2)} ${sy(y2)}`, {stroke:color, width:2, dash:'7 5', fill:'none'});
+      }
     }
   });
 
@@ -2488,7 +2948,29 @@ function drawChart(){
     drawLegend(svg, visible, 'manual', W, H, margin, legendFontSize, manualLegendX, manualLegendY, selectedGroup);
   }
 
-  document.getElementById('plotMessage').textContent = `已繪製 ${seriesData.length} 組曲線；Y 軸模式：${autoYLabel(yMode)}。`;
+  document.getElementById('plotMessage').textContent = `已繪製 ${seriesData.length} 組曲線；Y 軸模式：${autoYLabel(yMode)}${['ratio','removal','lnratio','neglratio'].includes(yMode) ? '；各 Rep 先以自己的 C0 正規化後再平均' : ''}${mergeReplicates ? '；已合併相同條件多重複' : ''}${showErrorBars ? '；error bar = 平均 ± SD' : ''}。`;
+
+  const rateBox = document.getElementById('rateResult');
+  if(rateBox){
+    if(showRateFit && rateLines.length){
+      rateBox.classList.remove('hide');
+      const unit = (visible[0] && visible[0].timeUnit) ? visible[0].timeUnit : (p.input.timeUnit || 'time');
+      rateBox.textContent = '反應速率常數（各 Rep 先以自己的 C0 計算 -ln(C/C0) 後回歸）：\n' + rateLines.map(item => {
+        if(item.repRateSummary && item.repRateSummary.nRep > 1){
+          const sdText = Number.isFinite(item.repRateSummary.kSd) ? ` ± ${fmt(item.repRateSummary.kSd, 5)}` : '';
+          return `${item.label}: k = ${fmt(item.repRateSummary.kMean, 5)}${sdText} ${unit}⁻¹, 平均 R² = ${fmt(item.repRateSummary.r2Mean, 4)}, reps = ${item.repRateSummary.nRep}`;
+        }
+        if(item.repRateSummary && item.repRateSummary.nRep === 1){
+          const f = item.repRateSummary.fits[0];
+          return `${item.label}: k = ${fmt(f.slope, 5)} ${unit}⁻¹, R² = ${fmt(f.r2, 4)}, rep = 1`;
+        }
+        return `${item.label}: k = ${fmt(item.fit.slope, 5)} ${unit}⁻¹, R² = ${fmt(item.fit.r2, 4)}, n = ${item.fit.n}`;
+      }).join('\n');
+    }else{
+      rateBox.classList.add('hide');
+      rateBox.textContent = '';
+    }
+  }
 }
 
 function buildParamSummary(series){
@@ -2496,7 +2978,7 @@ function buildParamSummary(series){
 }
 
 function autoYLabel(mode){
-  return {conc:'Concentration', ratio:'C/C0', removal:'Removal (%)', lnratio:'ln(C/C0)'}[mode] || 'Y';
+  return {conc:'Concentration', ratio:'C/C0', removal:'Removal (%)', lnratio:'ln(C/C0)', neglratio:'-ln(C/C0)'}[mode] || 'Y';
 }
 
 function drawGrid(svg, W, H, margin, xMax, yMax, sx, sy, xMin=0, yMin=0, tickFontSize=12, useTimes=false, xTickCount=6, yTickCount=6, showGrid=true, showAxisBorder=true, gridLineWidth=1){
@@ -2664,53 +3146,106 @@ function handleTimeUnitChange(){
 }
 
 function setupTableKeyboardNavigation(){
-  document.querySelectorAll('table.data-entry-table').forEach(table => {
-    if(table.dataset.keyboardReady === '1') return;
-    table.dataset.keyboardReady = '1';
-    table.addEventListener('keydown', event => {
-      const target = event.target;
-      if(!target || !target.matches('input, select, textarea')) return;
-      const keys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'];
-      if(!keys.includes(event.key)) return;
+  if(window.__metTableKeyboardNavigationV3) return;
+  window.__metTableKeyboardNavigationV3 = true;
 
-      if(target.tagName === 'TEXTAREA') return;
-      if(event.key === 'ArrowLeft' || event.key === 'ArrowRight'){
-        if(target.tagName === 'INPUT' && ['text','number','search',''].includes(target.type || '')){
-          const pos = target.selectionStart;
-          const len = target.value.length;
-          if(event.key === 'ArrowLeft' && pos !== 0) return;
-          if(event.key === 'ArrowRight' && pos !== len) return;
-        }
+  const keySet = new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter']);
+  const editableSelector = 'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])';
+  let lastEditable = null;
+
+  function isEditable(el){
+    return !!(el && el.matches && el.matches(editableSelector));
+  }
+
+  function remember(el){
+    if(isEditable(el) && el.closest('table.data-entry-table')){
+      lastEditable = el;
+    }
+  }
+
+  function cellEditable(cell){
+    return cell ? cell.querySelector(editableSelector) : null;
+  }
+
+  function locationFrom(el){
+    if(!isEditable(el)) el = lastEditable;
+    if(!isEditable(el)) return null;
+    const table = el.closest('table.data-entry-table');
+    const cell = el.closest('td');
+    const row = el.closest('tr');
+    if(!table || !cell || !row) return null;
+    const rows = [...table.querySelectorAll('tbody tr')];
+    const rowIndex = rows.indexOf(row);
+    const colIndex = [...row.children].indexOf(cell);
+    if(rowIndex < 0 || colIndex < 0) return null;
+    return {table, rows, row, cell, editable:el, rowIndex, colIndex};
+  }
+
+  function nextLocation(loc, key){
+    let r = loc.rowIndex;
+    let c = loc.colIndex;
+
+    const advance = () => {
+      if(key === 'ArrowUp') r -= 1;
+      else if(key === 'ArrowDown' || key === 'Enter') r += 1;
+      else if(key === 'ArrowLeft') c -= 1;
+      else if(key === 'ArrowRight') c += 1;
+    };
+
+    advance();
+
+    while(r >= 0 && r < loc.rows.length){
+      const row = loc.rows[r];
+      if(c < 0 || c >= row.children.length) return null;
+      const cell = row.children[c];
+      const editable = cellEditable(cell);
+      if(editable) return {cell, editable};
+      advance();
+    }
+    return null;
+  }
+
+  function keepCurrentCell(loc){
+    const cur = cellEditable(loc.cell) || loc.editable;
+    if(cur && typeof cur.focus === 'function'){
+      requestAnimationFrame(() => cur.focus({preventScroll:true}));
+    }
+  }
+
+  function handleKey(event){
+    if(!keySet.has(event.key) || event.isComposing) return;
+    const active = isEditable(event.target) ? event.target : lastEditable;
+    const loc = locationFrom(active);
+    if(!loc) return;
+
+    // Once inside a data-entry table, every arrow/Enter key is owned by the table.
+    // Even at the edge, prevent browser/page/table scrolling and keep focus in place.
+    event.preventDefault();
+    event.stopPropagation();
+    if(event.stopImmediatePropagation) event.stopImmediatePropagation();
+
+    if(event.target && event.target.tagName === 'TEXTAREA') return;
+
+    const next = nextLocation(loc, event.key);
+    if(!next){
+      keepCurrentCell(loc);
+      return;
+    }
+
+    lastEditable = next.editable;
+    requestAnimationFrame(() => {
+      next.editable.focus({preventScroll:true});
+      if(next.editable.tagName === 'INPUT' && next.editable.type !== 'color' && typeof next.editable.select === 'function'){
+        next.editable.select();
       }
-
-      const currentCell = target.closest('td');
-      const currentRow = target.closest('tr');
-      if(!currentCell || !currentRow) return;
-
-      const rows = [...table.querySelectorAll('tbody tr')];
-      const rowIndex = rows.indexOf(currentRow);
-      const colIndex = [...currentRow.children].indexOf(currentCell);
-      if(rowIndex < 0 || colIndex < 0) return;
-
-      let nextRow = rowIndex;
-      let nextCol = colIndex;
-
-      if(event.key === 'ArrowUp') nextRow--;
-      if(event.key === 'ArrowDown' || event.key === 'Enter') nextRow++;
-      if(event.key === 'ArrowLeft') nextCol--;
-      if(event.key === 'ArrowRight') nextCol++;
-
-      if(nextRow < 0 || nextRow >= rows.length || nextCol < 0 || nextCol >= rows[nextRow].children.length) return;
-
-      const nextCell = rows[nextRow].children[nextCol];
-      const nextInput = nextCell.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])');
-      if(!nextInput) return;
-
-      event.preventDefault();
-      nextInput.focus();
-      if(nextInput.select && nextInput.tagName === 'INPUT') nextInput.select();
     });
-  });
+  }
+
+  document.addEventListener('focusin', event => remember(event.target), true);
+  document.addEventListener('mousedown', event => remember(event.target), true);
+  document.addEventListener('input', event => remember(event.target), true);
+  window.addEventListener('keydown', handleKey, {capture:true, passive:false});
+  document.addEventListener('keydown', handleKey, {capture:true, passive:false});
 }
 
 function findNavigableCell(row, colIndex){
@@ -2807,8 +3342,12 @@ function normalizeImportedProject(p){
   p.input.legendNameUV ??= '';
   p.input.legendNamepH ??= '';
   p.input.markerSize = Number(p.input.markerSize) || 6.5;
+  p.input.replicateCount = Math.max(1, Math.min(12, Number(p.input.replicateCount) || 1));
   p.input.editingSeriesId ??= '';
-  p.input.rows ||= [];
+  p.input.rows = (p.input.rows || []).map(r => {
+    const reps = Array.isArray(r.reps) ? r.reps : (Array.isArray(r.repAreas) ? r.repAreas : (r.area !== undefined && r.area !== '' ? [r.area] : []));
+    return {...r, reps, repAreas: reps};
+  });
 
   p.series ||= [];
   p.series.forEach((s, i) => {
@@ -2826,7 +3365,13 @@ function normalizeImportedProject(p){
     s.color ||= defaultColors[i % defaultColors.length];
     s.marker ||= markerOptions[i % markerOptions.length];
     s.markerSize = Number(s.markerSize) || 6.5;
-    s.rows ||= [];
+    s.replicateCount = Math.max(1, Math.min(12, Number(s.replicateCount) || Math.max(1, ...((s.rows || []).map(r => (Array.isArray(r.reps) ? r.reps.length : (Array.isArray(r.repAreas) ? r.repAreas.length : (r.area !== undefined && r.area !== '' ? 1 : 0))))))));
+    s.legendOrder = Number(s.legendOrder) || i + 1;
+    s.rows = (s.rows || []).map(r => {
+      const reps = Array.isArray(r.reps) ? r.reps : (Array.isArray(r.repAreas) ? r.repAreas : (r.area !== undefined && r.area !== '' ? [r.area] : []));
+      const repConcs = Array.isArray(r.repConcs) ? r.repConcs : (reps.length ? reps.map(a => Number.isFinite(Number(r.conc)) && reps.length === 1 ? Number(r.conc) : areaToConc(a)).filter(Number.isFinite) : []);
+      return {...r, reps, repAreas: reps, repConcs};
+    });
     s.timeUnit ||= p.input.timeUnit || 'sec';
   });
 
@@ -2834,8 +3379,13 @@ function normalizeImportedProject(p){
   p.chart.title ||= 'Metformin degradation curve';
   p.chart.xLabel ||= `Time (${p.input.timeUnit || 'sec'})`;
   p.chart.yLabel ||= 'Concentration';
+  p.chart.xAxisLabelGap = Number(p.chart.xAxisLabelGap) || 58;
+  p.chart.yAxisLabelGap = Number(p.chart.yAxisLabelGap) || 64;
   p.chart.yMode ||= 'conc';
   p.chart.lineMode ||= 'line-marker';
+  p.chart.mergeReplicates ??= false;
+  p.chart.showErrorBars ??= false;
+  p.chart.showRateFit ??= false;
   p.chart.activePlotGroup = p.chart.activePlotGroup === '__all__' ? '__all__' : canonicalGroupName(p.chart.activePlotGroup || '__all__');
   p.chart.defaultSeriesGroup = canonicalGroupName(p.chart.defaultSeriesGroup || '');
   p.chart.width = Number(p.chart.width) || 1240;
